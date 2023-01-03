@@ -1,4 +1,5 @@
-""" Capacited Vehicles Routing Problem (CVRP) """
+""" This code is based on and adapted from the OR-Tools example for Capacited Vehicles Routing Problem (CVRP) """
+""" Please find the original code here: https://developers.google.com/optimization/routing/cvrp#entire_program """
 from ortools.constraint_solver import routing_enums_pb2
 from ortools.constraint_solver import pywrapcp
 import ortools.constraint_solver.routing_parameters_pb2
@@ -18,7 +19,7 @@ def create_data_model():
     carriers['cpkm_center'] = [1, 1, 1, 1, 1, 1, 1]
     carriers['cpkm_outside'] = [1, 1, 1, 1, 1, 1, 1]
 
-    """Stores the data for the problem."""
+    # Stores the data for the problem
     data = {}
     df = pd.read_csv('./instances/X-n1001-k43.csv', sep=';', header=None)
     data['locations'] = [tuple(x) for x in df.values]
@@ -32,7 +33,7 @@ def create_data_model():
 
 
 def print_solution(data, manager, routing, solution):
-    """Prints solution on console."""
+    # Prints solution on console
     print(f'Objective: {solution.ObjectiveValue()}')
     total_distance = 0
     total_load = 0
@@ -62,35 +63,35 @@ def print_solution(data, manager, routing, solution):
 
 
 def main():
-    """Solve the CVRP problem."""
-    # Instantiate the data problem.
+    # Solve the CVRP problem
+    # Instantiate the data problem
     data = create_data_model()
 
-    # Create the routing index manager.
+    # Create the routing index manager
     manager = pywrapcp.RoutingIndexManager(len(data['distance_matrix']),
                                            data['num_vehicles'], data['depot'])
 
-    # Create Routing Model.
+    # Create Routing Model
     routing = pywrapcp.RoutingModel(manager)
 
-    # Create and register a transit callback.
+    # Create and register a transit callback
     def distance_callback(from_index, to_index):
         """Returns the distance between the two nodes."""
-        # Convert from routing variable Index to distance matrix NodeIndex.
+        # Convert from routing variable Index to distance matrix NodeIndex
         from_node = manager.IndexToNode(from_index)
         to_node = manager.IndexToNode(to_index)
         return data['distance_matrix'][from_node][to_node]
 
     transit_callback_index = routing.RegisterTransitCallback(distance_callback)
 
-    # Define cost of each arc.
+    # Define cost of each arc
     routing.SetArcCostEvaluatorOfAllVehicles(transit_callback_index)
 
 
-    # Add Capacity (Weight) constraint.
+    # Add Capacity (Weight) constraint
     def demand_callback(from_index):
         """Returns the demand of the node."""
-        # Convert from routing variable Index to demands NodeIndex.
+        # Convert from routing variable Index to demands NodeIndex
         from_node = manager.IndexToNode(from_index)
         return data['demands'][from_node]
 
@@ -121,7 +122,7 @@ def main():
     )
     """
 
-    # Setting first solution heuristic.
+    # Setting first solution heuristic
     try:
         search_parameters = pywrapcp.DefaultRoutingSearchParameters()
     except Exception as e:
@@ -133,10 +134,10 @@ def main():
         routing_enums_pb2.LocalSearchMetaheuristic.AUTOMATIC)
     search_parameters.time_limit.FromSeconds(5)
 
-    # Solve the problem.
+    # Solve the problem
     solution = routing.SolveWithParameters(search_parameters)
 
-    # Print solution on console.
+    # Print solution on console
     if solution:
         print_solution(data, manager, routing, solution)
 
