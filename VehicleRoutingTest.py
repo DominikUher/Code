@@ -3,41 +3,30 @@ from ortools.constraint_solver import routing_enums_pb2
 from ortools.constraint_solver import pywrapcp
 import ortools.constraint_solver.routing_parameters_pb2
 import time
-import math
 import pandas as pd
 import numpy as np
+from utils import *
 
 
 
 def create_data_model():
+    # Carrier characteristics
+    carrier_volumes = [34.80, 5.80, 3.20, 21.56, 7.67, 4.27, 0.20]
+    carrier_payloads = [2800, 883, 670, 2800, 905, 720, 100]
+    carrier_km_cost_center = [1, 1, 1, 1, 1, 1, 1]
+    carrier_km_cost_outside = [1, 1, 1, 1, 1, 1, 1]
+
     """Stores the data for the problem."""
     data = {}
     df = pd.read_csv('./instances/X-n1001-k43.csv', sep=';', header=None)
     data['locations'] = [tuple(x) for x in df.values]
     data['distance_matrix'] = compute_euclidean_distance_matrix(data['locations'])
     data['demands'] = pd.read_csv('./instances/X-n1001-k43_D.csv', sep=';', header=None).values.flatten()
-    data['vehicle_capacities'] = np.repeat([131, 200], 30)
-    data['num_vehicles'] = 60
+    data['vehicle_capacities'] = np.repeat([131, 200], 100)
+    data['vehicle_volumes'] = np.repeat([13, 20], 100)
+    data['num_vehicles'] = 200
     data['depot'] = 0
     return data
-
-
-
-def compute_euclidean_distance_matrix(locations):
-    """Creates callback to return distance between points."""
-    distances = {}
-    for from_counter, from_node in enumerate(locations):
-        distances[from_counter] = {}
-        for to_counter, to_node in enumerate(locations):
-            if from_counter == to_counter:
-                distances[from_counter][to_counter] = 0
-            else:
-                # Euclidean distance
-                distances[from_counter][to_counter] = (int(
-                    math.hypot((from_node[0] - to_node[0]),
-                               (from_node[1] - to_node[1]))))
-    return distances
-
 
 
 def print_solution(data, manager, routing, solution):
@@ -112,9 +101,10 @@ def main():
         True,  # start cumul to zero
         'Capacity')
 
+    """
     # Add Capacity (Volume) constraint.
     def volume_callback(from_index):
-        """Returns the demand (in m3) of the node."""
+        #Returns the demand (in m3) of the node.
         # Convert from routing variable Index to demands NodeIndex.
         from_node = manager.IndexToNode(from_index)
         return data['volumes'][from_node]
@@ -127,6 +117,7 @@ def main():
         True,
         'Volume'
     )
+    """
 
     # Setting first solution heuristic.
     try:
