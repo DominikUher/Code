@@ -11,10 +11,12 @@ from utils import *
 
 def create_data_model():
     # Carrier characteristics
-    carrier_volumes = [34.80, 5.80, 3.20, 21.56, 7.67, 4.27, 0.20]
-    carrier_payloads = [2800, 883, 670, 2800, 905, 720, 100]
-    carrier_km_cost_center = [1, 1, 1, 1, 1, 1, 1]
-    carrier_km_cost_outside = [1, 1, 1, 1, 1, 1, 1]
+    carriers = {}
+    carriers['numbers'] = [1, 2, 3, 4, 5, 6, 7]
+    carriers['volumes'] = [34.80, 5.80, 3.20, 21.56, 7.67, 4.27, 0.20]
+    carriers['payloads'] = [2800, 883, 670, 2800, 905, 720, 100]
+    carriers['cpkm_center'] = [1, 1, 1, 1, 1, 1, 1]
+    carriers['cpkm_outside'] = [1, 1, 1, 1, 1, 1, 1]
 
     """Stores the data for the problem."""
     data = {}
