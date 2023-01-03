@@ -8,20 +8,22 @@ import pandas as pd
 import numpy as np
 from utils import *
 
+# Global variables
 vehicles = np.repeat(np.arange(1, 8), 10) # TODO: hardcoded for now, make editable alter
 num_vehicles = len(vehicles)
 city = 'NewYork' # TODO: hardcoded for now, make editable later
+
+# Carrier characteristics
+carriers = {}
+carriers['ids'] = [1, 2, 3, 4, 5, 6, 7]
+carriers['payloads'] = [2800000, 883000, 670000, 2800000, 905000, 720000, 100000] # in g
+carriers['volumes'] = [34800, 5800, 3200, 21560, 7670, 4270, 200] # in liters
+carriers['cpkm_inside'] = [1, 1, 1, 1, 1, 1, 1]
+carriers['cpkm_outside'] = [1, 1, 1, 1, 1, 1, 1]
+
     
 
 def create_data_model():
-    # Carrier characteristics
-    carriers = {}
-    carriers['ids'] = [1, 2, 3, 4, 5, 6, 7]
-    carriers['payloads'] = [2800000, 883000, 670000, 2800000, 905000, 720000, 100000] # in g
-    carriers['volumes'] = [34800, 5800, 3200, 21560, 7670, 4270, 200] # in liters
-    carriers['cpkm_inside'] = [1, 1, 1, 1, 1, 1, 1]
-    carriers['cpkm_outside'] = [1, 1, 1, 1, 1, 1, 1]
-
     # Stores the data for the problem
     nodes = get_nodes(city)
     num_nodes = len(nodes.index)
@@ -90,7 +92,7 @@ def main():
 
     # Create and register a transit callback
     def distance_callback(from_index, to_index):
-        """Returns the distance between the two nodes."""
+        # Returns the distance between the two nodes
         # Convert from routing variable Index to distance matrix NodeIndex
         from_node = manager.IndexToNode(from_index)
         to_node = manager.IndexToNode(to_index)
@@ -102,17 +104,26 @@ def main():
     routing.SetArcCostEvaluatorOfAllVehicles(transit_callback_index)
 
 
+    # Create and register a total cost transit callback
+    def create_cost_callback(from_index, to_index, vehicle_id):
+        # Define sub-costs to be included
+        def cost_inside(node):
+            # Tracks cost for travelling in the city center
+            from_node = manager.IndexToNode(from_index)
+            to_node = manager.IndexToNode(to_index)
+            return data['distance_inside'][from_node][to_node] * carriers['cpkm_inside']
+
     # Add Capacity (Weight) constraint
-    def demand_callback(from_index):
-        """Returns the weight demand of the node."""
+    def payload_callback(from_index):
+        # Returns the weight demand of the node
         # Convert from routing variable Index to demands NodeIndex
         from_node = manager.IndexToNode(from_index)
         return data['demands_g'][from_node]
 
-    demand_callback_index = routing.RegisterUnaryTransitCallback(
-        demand_callback)
+    payload_callback_index = routing.RegisterUnaryTransitCallback(
+        payload_callback)
     routing.AddDimensionWithVehicleCapacity(
-        demand_callback_index,
+        payload_callback_index,
         0,  # null capacity slack
         data['vehicle_payloads'],  # vehicle maximum capacities
         True,  # start cumul to zero
