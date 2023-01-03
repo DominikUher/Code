@@ -8,21 +8,21 @@ import pandas as pd
 import numpy as np
 from utils import *
 
-
+vehicles = np.repeat(np.arange(1, 8), 10) # TODO: hardcoded for now, make editable alter
+num_vehicles = len(vehicles)
+city = 'NewYork' # TODO: hardcoded for now, make editable later
+    
 
 def create_data_model():
     # Carrier characteristics
     carriers = {}
     carriers['ids'] = [1, 2, 3, 4, 5, 6, 7]
-    carriers['volumes'] = [34.80, 5.80, 3.20, 21.56, 7.67, 4.27, 0.20]
-    carriers['payloads'] = [2800, 883, 670, 2800, 905, 720, 100]
+    carriers['payloads'] = [2800000, 883000, 670000, 2800000, 905000, 720000, 100000] # in g
+    carriers['volumes'] = [34800, 5800, 3200, 21560, 7670, 4270, 200] # in liters
     carriers['cpkm_inside'] = [1, 1, 1, 1, 1, 1, 1]
     carriers['cpkm_outside'] = [1, 1, 1, 1, 1, 1, 1]
 
     # Stores the data for the problem
-    vehicles = np.repeat(np.arange(1, 7), 10) # TODO: hardcoded for now, make editable alter
-    num_vehicles = len(vehicles)
-    city = 'NewYork' # TODO: hardcoded for now, make editable later
     nodes = get_nodes(city)
     num_nodes = len(nodes.index)
     routes = get_routes(city)
@@ -32,10 +32,10 @@ def create_data_model():
     data['distance_total'] = get_distance_matrix_from_routes(routes, num_nodes, 'Total')
     data['distance_inside'] = get_distance_matrix_from_routes(routes, num_nodes, 'Inside')
     data['distance_outside'] = get_distance_matrix_from_routes(routes, num_nodes, 'Outside')
-    data['demands_kg'] = nodes['Demand[kg]'].values
-    data['demands_m3'] = nodes['Demand[m^3*10^-3]'].values
-    data['vehicle_payloads'] = [carriers['payloads'][i] for i in vehicles]
-    data['vehicle_volumes'] = [carriers['volumes'][i] for i in vehicles]
+    data['demands_g'] = [d*1000 for d in nodes['Demand[kg]'].values]
+    data['demands_liter'] = nodes['Demand[m^3*10^-3]'].values
+    data['vehicle_payloads'] = [carriers['payloads'][i-1] for i in vehicles]
+    data['vehicle_volumes'] = [carriers['volumes'][i-1] for i in vehicles]
     data['num_vehicles'] = num_vehicles
     data['depot'] = 0
     return data
@@ -45,29 +45,34 @@ def print_solution(data, manager, routing, solution):
     # Prints solution on console
     print(f'Objective: {solution.ObjectiveValue()}')
     total_distance = 0
-    total_load = 0
+    total_payload = 0
+    total_volume = 0
     for vehicle_id in range(data['num_vehicles']):
         index = routing.Start(vehicle_id)
-        plan_output = 'Route for vehicle {}:\n'.format(vehicle_id)
+        vehicle_output = 'Route for vehicle {0} (Type: {1}):\n'.format(vehicle_id, vehicles[vehicle_id])
         route_distance = 0
-        route_load = 0
+        route_payload = 0
+        route_volume = 0
         while not routing.IsEnd(index):
             node_index = manager.IndexToNode(index)
-            route_load += data['demands_kg'][node_index]
-            plan_output += ' {0} Load({1}) -> '.format(node_index, route_load)
+            route_payload += data['demands_g'][node_index]
+            route_volume += data['demands_liter'][node_index]
+            vehicle_output += ' {0} Load({1}kg; {2}m3) -> '.format(node_index, route_payload/1000, route_volume/1000)
             previous_index = index
             index = solution.Value(routing.NextVar(index))
             route_distance += routing.GetArcCostForVehicle(
                 previous_index, index, vehicle_id)
-        plan_output += ' {0} Load({1})\n'.format(manager.IndexToNode(index),
-                                                 route_load)
-        plan_output += 'Distance of the route: {}m\n'.format(route_distance)
-        plan_output += 'Load of the route: {}\n'.format(route_load)
-        print(plan_output)
-        total_distance += route_distance
-        total_load += route_load
+        vehicle_output += ' {0} Load({1}kg; {2}m3)\n'.format(manager.IndexToNode(index),
+                                                 route_payload/1000, route_volume/1000)
+        vehicle_output += 'Distance of the route: {}m\n'.format(route_distance)
+        vehicle_output += 'Load of the route: {0}kg and {1}m3\n'.format(route_payload/1000, route_volume/1000)
+        if route_distance > 0:
+            print(vehicle_output)
+            total_distance += route_distance
+            total_payload += route_payload
+            total_volume += route_volume
     print('Total distance of all routes: {}m'.format(total_distance))
-    print('Total load of all routes: {}'.format(total_load))
+    print('Total load of all routes: {0}kg and {1}m3'.format(total_payload/1000, total_volume/1000))
 
 
 
@@ -102,7 +107,7 @@ def main():
         """Returns the weight demand of the node."""
         # Convert from routing variable Index to demands NodeIndex
         from_node = manager.IndexToNode(from_index)
-        return data['demands_kg'][from_node]
+        return data['demands_g'][from_node]
 
     demand_callback_index = routing.RegisterUnaryTransitCallback(
         demand_callback)
@@ -113,13 +118,12 @@ def main():
         True,  # start cumul to zero
         'Payload')
 
-    """
     # Add Capacity (Volume) constraint.
     def volume_callback(from_index):
         #Returns the volume demand of the node.
         # Convert from routing variable Index to demands NodeIndex.
         from_node = manager.IndexToNode(from_index)
-        return data['volumes'][from_node]
+        return data['demands_liter'][from_node]
 
     volume_callback_index = routing.RegisterUnaryTransitCallback(volume_callback)
     routing.AddDimensionWithVehicleCapacity(
@@ -129,7 +133,6 @@ def main():
         True,
         'Volume'
     )
-    """
 
     # Setting first solution heuristic
     try:
@@ -141,7 +144,7 @@ def main():
         routing_enums_pb2.FirstSolutionStrategy.AUTOMATIC)
     search_parameters.local_search_metaheuristic = (
         routing_enums_pb2.LocalSearchMetaheuristic.AUTOMATIC)
-    search_parameters.time_limit.FromSeconds(5)
+    search_parameters.time_limit.FromSeconds(600)
 
     # Solve the problem
     solution = routing.SolveWithParameters(search_parameters)
@@ -153,14 +156,14 @@ def main():
 
 
 if __name__ == '__main__':
-    import cProfile
-    from pstats import Stats
+    # import cProfile
+    # from pstats import Stats
 
-    pr = cProfile.Profile()
-    pr.enable()
+    # pr = cProfile.Profile()
+    # pr.enable()
 
     main()
 
-    pr.disable()
-    stats = Stats(pr)
-    stats.sort_stats('tottime').print_stats(10)
+    # pr.disable()
+    # stats = Stats(pr)
+    # stats.sort_stats('tottime').print_stats(10)
