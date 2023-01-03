@@ -13,21 +13,30 @@ from utils import *
 def create_data_model():
     # Carrier characteristics
     carriers = {}
-    carriers['numbers'] = [1, 2, 3, 4, 5, 6, 7]
+    carriers['ids'] = [1, 2, 3, 4, 5, 6, 7]
     carriers['volumes'] = [34.80, 5.80, 3.20, 21.56, 7.67, 4.27, 0.20]
     carriers['payloads'] = [2800, 883, 670, 2800, 905, 720, 100]
-    carriers['cpkm_center'] = [1, 1, 1, 1, 1, 1, 1]
+    carriers['cpkm_inside'] = [1, 1, 1, 1, 1, 1, 1]
     carriers['cpkm_outside'] = [1, 1, 1, 1, 1, 1, 1]
 
     # Stores the data for the problem
+    vehicles = np.repeat(np.arange(1, 7), 10) # TODO: hardcoded for now, make editable alter
+    num_vehicles = len(vehicles)
+    city = 'NewYork' # TODO: hardcoded for now, make editable later
+    nodes = get_nodes(city)
+    num_nodes = len(nodes.index)
+    routes = get_routes(city)
+    num_routes = len(routes.index)
+
     data = {}
-    df = pd.read_csv('./instances/X-n1001-k43.csv', sep=';', header=None)
-    data['locations'] = [tuple(x) for x in df.values]
-    data['distance_matrix'] = compute_euclidean_distance_matrix(data['locations'])
-    data['demands'] = pd.read_csv('./instances/X-n1001-k43_D.csv', sep=';', header=None).values.flatten()
-    data['vehicle_capacities'] = np.repeat([131, 200], 100)
-    data['vehicle_volumes'] = np.repeat([13, 20], 100)
-    data['num_vehicles'] = 200
+    data['distance_total'] = get_distance_matrix_from_routes(routes, num_nodes, 'Total')
+    data['distance_inside'] = get_distance_matrix_from_routes(routes, num_nodes, 'Inside')
+    data['distance_outside'] = get_distance_matrix_from_routes(routes, num_nodes, 'Outside')
+    data['demands_kg'] = nodes['Demand[kg]'].values
+    data['demands_m3'] = nodes['Demand[m^3*10^-3]'].values
+    data['vehicle_payloads'] = [carriers['payloads'][i] for i in vehicles]
+    data['vehicle_volumes'] = [carriers['volumes'][i] for i in vehicles]
+    data['num_vehicles'] = num_vehicles
     data['depot'] = 0
     return data
 
@@ -44,7 +53,7 @@ def print_solution(data, manager, routing, solution):
         route_load = 0
         while not routing.IsEnd(index):
             node_index = manager.IndexToNode(index)
-            route_load += data['demands'][node_index]
+            route_load += data['demands_kg'][node_index]
             plan_output += ' {0} Load({1}) -> '.format(node_index, route_load)
             previous_index = index
             index = solution.Value(routing.NextVar(index))
@@ -68,7 +77,7 @@ def main():
     data = create_data_model()
 
     # Create the routing index manager
-    manager = pywrapcp.RoutingIndexManager(len(data['distance_matrix']),
+    manager = pywrapcp.RoutingIndexManager(len(data['distance_total']),
                                            data['num_vehicles'], data['depot'])
 
     # Create Routing Model
@@ -80,7 +89,7 @@ def main():
         # Convert from routing variable Index to distance matrix NodeIndex
         from_node = manager.IndexToNode(from_index)
         to_node = manager.IndexToNode(to_index)
-        return data['distance_matrix'][from_node][to_node]
+        return data['distance_total'][from_node][to_node]
 
     transit_callback_index = routing.RegisterTransitCallback(distance_callback)
 
@@ -90,24 +99,24 @@ def main():
 
     # Add Capacity (Weight) constraint
     def demand_callback(from_index):
-        """Returns the demand of the node."""
+        """Returns the weight demand of the node."""
         # Convert from routing variable Index to demands NodeIndex
         from_node = manager.IndexToNode(from_index)
-        return data['demands'][from_node]
+        return data['demands_kg'][from_node]
 
     demand_callback_index = routing.RegisterUnaryTransitCallback(
         demand_callback)
     routing.AddDimensionWithVehicleCapacity(
         demand_callback_index,
         0,  # null capacity slack
-        data['vehicle_capacities'],  # vehicle maximum capacities
+        data['vehicle_payloads'],  # vehicle maximum capacities
         True,  # start cumul to zero
-        'Capacity')
+        'Payload')
 
     """
     # Add Capacity (Volume) constraint.
     def volume_callback(from_index):
-        #Returns the demand (in m3) of the node.
+        #Returns the volume demand of the node.
         # Convert from routing variable Index to demands NodeIndex.
         from_node = manager.IndexToNode(from_index)
         return data['volumes'][from_node]
