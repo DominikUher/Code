@@ -24,7 +24,7 @@ def get_routes(city):
 
 def get_distance_matrix_from_routes(routes, num_nodes, dist_type):
     # Returns distance matrix computed from custom .routes format
-    valid = ['Total, Inside, Outside']
+    valid = ['Total', 'Inside', 'Outside']
     if dist_type not in valid:
         raise ValueError(f"{dist_type} is not a valid distance type.\nAcceptable values are: {valid}")
     return list(zip(*([iter(routes['DistanceInside[km]'])]*num_nodes)))
