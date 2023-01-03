@@ -21,7 +21,7 @@ carriers['volumes'] = [34800, 5800, 3200, 21560, 7670, 4270, 200] # in liters
 carriers['cpkm_inside'] = [1, 1, 1, 1, 1, 1, 1]
 carriers['cpkm_outside'] = [1, 1, 1, 1, 1, 1, 1]
 
-    
+
 
 def create_data_model():
     # Stores the data for the problem
@@ -41,6 +41,7 @@ def create_data_model():
     data['num_vehicles'] = num_vehicles
     data['depot'] = 0
     return data
+
 
 
 def print_solution(data, manager, routing, solution):
