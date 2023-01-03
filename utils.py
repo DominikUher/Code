@@ -27,4 +27,6 @@ def get_distance_matrix_from_routes(routes, num_nodes, dist_type):
     valid = ['Total', 'Inside', 'Outside']
     if dist_type not in valid:
         raise ValueError(f"{dist_type} is not a valid distance type.\nAcceptable values are: {valid}")
-    return list(zip(*([iter(routes['DistanceInside[km]'])]*num_nodes)))
+    km_matrix = list(zip(*([iter(routes[f'Distance{dist_type}[km]'])]*num_nodes)))
+    m_matrix = [int(x*1000) for x in km_matrix]
+    return m_matrix
