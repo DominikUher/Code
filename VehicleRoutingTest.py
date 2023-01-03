@@ -103,7 +103,7 @@ def main():
     # Define cost of each arc
     routing.SetArcCostEvaluatorOfAllVehicles(transit_callback_index)
 
-
+    # TODO
     # Create and register a total cost transit callback
     def create_cost_callback(from_index, to_index, vehicle_id):
         # Define sub-costs to be included
