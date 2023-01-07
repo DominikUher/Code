@@ -9,17 +9,18 @@ import numpy as np
 from utils import *
 
 # Global variables
-vehicles = np.repeat(np.arange(1, 8), 10) # TODO: hardcoded for now, make editable alter
+vehicles = np.repeat(np.arange(1, 8), 10) # TODO: hardcoded for now, make editable later
 num_vehicles = len(vehicles)
 city = 'NewYork' # TODO: hardcoded for now, make editable later
+toll = 0
 
 # Carrier characteristics
 carriers = {}
 carriers['ids'] = [1, 2, 3, 4, 5, 6, 7]
 carriers['payloads'] = [2800000, 883000, 670000, 2800000, 905000, 720000, 100000] # in g
 carriers['volumes'] = [34800, 5800, 3200, 21560, 7670, 4270, 200] # in liters
-carriers['cpkm_inside'] = [1, 1, 1, 1, 1, 1, 1]
-carriers['cpkm_outside'] = [1, 1, 1, 1, 1, 1, 1]
+carriers['cpkm_outside'] = [3.020, 2.856, 2.800, 3.216, 2.921, 2.866, 2.732]
+carriers['cpkm_inside'] = [c+toll for c in carriers['cpkm_outside'].values]
 
 
 
