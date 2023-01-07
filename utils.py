@@ -1,5 +1,7 @@
 import pandas as pd
+from tkinter import *
 import math
+from RoutePlanningSoftware import *
 
 def compute_euclidean_distance_matrix(locations):
     """Creates callback to return distance between points."""
@@ -32,3 +34,32 @@ def get_distance_matrix_from_routes(routes, num_nodes, dist_type):
     # km_matrix = list(zip(*([iter(routes[f'Distance{dist_type}[km]'])]*num_nodes)))
     m_matrix = list(zip(*([iter(m_list)]*num_nodes)))
     return m_matrix
+
+def make_gui():
+    window = Tk()
+    window.title('Routing Software')
+
+    window.rowconfigure(0, minsize=800, weight=1)
+    window.columnconfigure(1, minsize=800, weight=1)
+
+    text_pane = Text(window)
+    frame_buttons = Frame(window, relief=RAISED, bd=2)
+    radio = IntVar(window, 1)
+    values = {"Paris" : 1, "New York" : 2, "Shanghai" : 3}
+
+    # Loop is used to create multiple Radiobuttons
+    # rather than creating each button separately
+    for (text, value) in values.items():
+        button = Radiobutton(frame_buttons, text = text, variable = radio, value = value, indicator = 0, background = "light gray")
+        button.grid(row=value-1, column=0, sticky='ew', padx=5, pady=5)
+
+    #btn_open = Button(frame_buttons, text="Open")
+    #btn_save = Button(frame_buttons, text="Save As...", command=print('Hello'))
+
+    #btn_open.grid(row=0, column=0, sticky="ew", padx=5, pady=5)
+    #btn_save.grid(row=1, column=0, sticky="ew", padx=5)
+
+    frame_buttons.grid(row=0, column=0, sticky="ns")
+    text_pane.grid(row=0, column=1, sticky="nsew")
+
+    window.mainloop()
