@@ -5,15 +5,13 @@
 from ortools.constraint_solver import routing_enums_pb2
 from ortools.constraint_solver import pywrapcp
 import ortools.constraint_solver.routing_parameters_pb2
-import time
-import pandas as pd
 import numpy as np
-from utils import get_nodes, get_routes, get_distance_matrix_from_routes
+from utils import get_nodes, get_routes, get_distance_matrix_from_routes, count_occurrences
 
-# Global variables
-vehicles = np.repeat(np.arange(1, 8), 10) # TODO: hardcoded for now, make editable later
+# Global variables defaults - Values are adjusted from GUI through set_variables()
+vehicles = np.repeat(np.arange(1, 8), 10)
 num_vehicles = len(vehicles)
-city = 'Paris' # TODO: hardcoded for now, make editable later
+city = 'Paris'
 toll = 0
 
 # Carrier characteristics
@@ -24,6 +22,21 @@ carriers['volumes'] = [34800, 5800, 3200, 21560, 7670, 4270, 200] # in liters
 carriers['cpkm_outside'] = [3020, 2856, 2800, 3216, 2921, 2866, 2732] #TODO: Adjust based on city
 carriers['cpkm_inside'] = [c+toll if num<3 else c for num, c in enumerate(carriers['cpkm_outside'])]
 # TODO: Consider adding constraints for maximum travel distance, time, speed, ...
+
+
+
+def set_variables(new_vehicles, new_city, new_toll):
+    global vehicles
+    global num_vehicles
+    global city
+    global toll
+    global carriers
+
+    vehicles = new_vehicles
+    num_vehicles = len(vehicles)
+    city = new_city
+    toll = new_toll
+    carriers['cpkm_inside'] = [c+toll if num<3 else c for num, c in enumerate(carriers['cpkm_outside'])]
 
 
 
@@ -50,7 +63,7 @@ def create_data_model():
 
 def print_solution(data, manager, routing, solution):
     # Prints solution on console
-    all_routes_string = ''
+    all_routes_string = 'Solution for {0} with {1}€/km toll and fleet {2}\n\n'.format(city, toll/1000, count_occurrences(vehicles))
     total_cost = 0
     total_distance = 0
     total_payload = 0
@@ -58,7 +71,7 @@ def print_solution(data, manager, routing, solution):
     chosen_fleet = []
     for vehicle_id in range(data['num_vehicles']):
         index = routing.Start(vehicle_id)
-        route_string = f'Route for vehicle {vehicle_id} (Type {vehicles[vehicle_id]}): '
+        route_string = f'Route for vehicle {len(chosen_fleet)+1} (Type {vehicles[vehicle_id]}):\n'
         route_cost = 0
         route_distance = 0
         route_distance_inside = 0
@@ -77,35 +90,30 @@ def print_solution(data, manager, routing, solution):
             route_distance_inside += data['distance_inside'][node_index][manager.IndexToNode(index)]
             route_distance_outside += data['distance_outside'][node_index][manager.IndexToNode(index)]
         route_string += f'[{manager.IndexToNode(index)}] ({route_payload/1000}kg; {route_volume/1000}m3)\n'
-        route_string += f'Distance: {route_distance/1000}km ({route_distance_inside/1000}km inside; {route_distance_outside/1000}km outside), '
-        route_string += f'Cost: {route_cost/1000}€, '
-        route_string += f'Load: {route_payload/1000}kg and {route_volume/1000}m3\n'
+        route_cpkm_in = carriers['cpkm_inside'][vehicles[vehicle_id]-1]/1000
+        route_cpkm_out = carriers['cpkm_outside'][vehicles[vehicle_id]-1]/1000
+        route_string += f'Cost: {route_cost/1000}€ ({route_cpkm_in}€/km inside and {route_cpkm_out}€/km outside)\n'
+        route_string += f'Distance: {route_distance/1000}km ({route_distance_inside/1000}km inside; {route_distance_outside/1000}km outside)\n'
+        route_max_payload = carriers['payloads'][vehicles[vehicle_id]-1]/1000
+        route_max_volume = carriers['volumes'][vehicles[vehicle_id]-1]/1000
+        route_string += f'Load: {route_payload/1000}/{route_max_payload}kg and {route_volume/1000}/{route_max_volume}m3\n'
         if route_cost > 0:
             total_distance += route_distance
             total_cost += route_cost
             total_payload += route_payload
             total_volume += route_volume
             chosen_fleet.append(vehicles[vehicle_id])
-            all_routes_string += route_string
-    total_dist_string = f'Total distance of all routes: {total_distance/1000}km'
-    total_cost_string = f'Total cost of all routes: {total_cost/1000}€'
+            all_routes_string += route_string+'\n'
     total_load_string = f'Total load of all routes: {total_payload/1000}kg and {total_volume/1000}m3'
-    chosen_fleet_string = f'Chosen fleet: {chosen_fleet} ({len(chosen_fleet)} vehicles)'
+    total_cost_string = f'Total cost of all routes: {total_cost/1000}€'
+    total_dist_string = f'Total distance of all routes: {total_distance/1000}km'
+    chosen_fleet_string = f'Chosen fleet: {count_occurrences(chosen_fleet)} ({len(chosen_fleet)} vehicles)'
     print(all_routes_string)
     print(total_dist_string)
     print(total_cost_string)
     print(total_load_string)
     print(chosen_fleet_string)
-    return all_routes_string, total_dist_string, total_cost_string, total_load_string, chosen_fleet_string
-
-
-
-def set_variables(new_vehicles, new_city, new_toll):
-    vehicles = new_vehicles
-    num_vehicles = len(vehicles)
-    city = new_city
-    toll = new_toll
-    carriers['cpkm_inside'] = [c+toll if num<3 else c for num, c in enumerate(carriers['cpkm_outside'])]
+    return all_routes_string, total_load_string, total_dist_string, total_cost_string, chosen_fleet_string
 
 
 

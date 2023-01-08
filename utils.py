@@ -1,5 +1,6 @@
 import pandas as pd
 import math
+from collections import defaultdict
 
 def compute_euclidean_distance_matrix(locations):
     """Creates callback to return distance between points."""
@@ -15,6 +16,12 @@ def compute_euclidean_distance_matrix(locations):
                     math.hypot((from_node[0] - to_node[0]),
                                (from_node[1] - to_node[1]))))
     return distances
+
+def count_occurrences(list):
+    d = defaultdict(int)
+    for item in list:
+        d[item] += 1
+    return dict(d)
 
 def get_nodes(city):
     return pd.read_csv(f'./instances/{city}.nodes', sep=' ')
