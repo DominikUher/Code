@@ -12,7 +12,7 @@ from functools import partial
 from utils import count_occurrences, generate_vehicles
 from route_planning import set_variables, main
 
-display = 'Welcome to ETS\'s new routing software!\nPlease select the relevant city, toll, and fleet in the left sidebar.\nGenerate routes with the button in the top left!\nAll vehicles are assumed to be available twice per day (morning/evening), which is why the solution might seem to use more vehicles than chosen.'
+display = 'Welcome to ETS\'s new routing software!\nPlease select the relevant city, toll, and fleet in the left sidebar.\nChoose your preferred first solution strategy (FSS), local search strategy (LSS), and time limit [sec].\nGenerate routes with the button in the top left!\nAll vehicles are assumed to be available twice per day (morning/evening), which is why the solution might seem to use more vehicles than chosen.'
 texts = ['', '', '']
 new_vehicles = []
 new_city = 'Paris'
@@ -90,17 +90,20 @@ def gui():
         new_city = 'Paris' if radio.get() == 1 else 'NewYork' if radio.get() == 2 else 'Shanghai'
         new_vehicles = generate_vehicles(existing_fleets[radio.get()-1]) if radio2.get() == 1 else np.repeat(np.arange(1, 8), fleet_nums[0]*2) if radio2.get() == 2 else generate_vehicles(fleet_nums)
         new_toll_str = label_value['text']
+        new_fss = fss_var.get()
+        new_lss = lss_var.get()
+        new_time = time_var.get()
         for id, _ in enumerate(texts):
             texts[id] += f'### Computing routes for {new_city} with{new_toll_str}tolls and fleet {count_occurrences(new_vehicles)} ###\n'
         update_display()
 
-        set_variables(new_vehicles, new_city, new_toll*1000) # Convert toll to 0.1ct value used in router
+        set_variables(new_vehicles, new_city, new_toll*1000, new_fss, new_lss, new_time) # Convert toll to 0.1ct value used in router
         start_time = ti.time()
-        routes, load, dist, time, cost, fleet = main()
+        routes, load, dist, time, cost, fleet, params = main()
         end_time = ti.time()
         texts[0] += f'{cost}\n{dist}\n{load}\n{time}\n{fleet}\n\n\n'
         texts[1] += routes+'\n\n\n'
-        texts[2] += f'### Solution found in {round(end_time-start_time, 3)}s\n\n'
+        texts[2] += f'### {params} ###\nSolution found in {round(end_time-start_time, 3)}s ###\n\n'
         update_display()
     
 
@@ -108,19 +111,38 @@ def gui():
     window = tk.Tk()
     window.title('ETS Routing Software')
     window.rowconfigure(0, minsize=25, weight=0)
-    window.rowconfigure(1, minsize=300, weight=1)
+    window.rowconfigure(1, minsize=25, weight=0)
     window.rowconfigure(2, minsize=25, weight=0)
+    window.rowconfigure(3, minsize=25, weight=0)
+    window.rowconfigure(4, minsize=300, weight=1)
+    window.rowconfigure(5, minsize=25, weight=0)
     window.columnconfigure(0, minsize=120, weight=0)
     window.columnconfigure(1, minsize=600, weight=1)
 
 
     # Content panes set-up
-    button_run = tk.Button(window, text='Run routing', background='green')
+    button_run = tk.Button(window, text='Run routing', background='lime green', activebackground='green')
     top_pane = tk.Frame(window, relief=tk.RAISED, bd=2)
+    fss_options = ['Automatic FSS', 'Path Cheapest Arc', 'Path Most Constrained Arc', 'Evaluator Strategy', 'Savings', 'Sweep', 'Christofides', 'All Unperformed', 'Best Insertion', 'Parallel Cheapest Insertion', 'Local Cheapest Insertion', 'Global Cheapest Arc', 'Local Cheapest Arc', 'First Unbound Min Value']
+    fss_var = tk.StringVar()
+    fss_var.set('Automatic FSS')
+    fss_menu = tk.OptionMenu(window, fss_var, *fss_options)
+    fss_menu.config(bg='light sea green', activebackground='medium turquoise')
+    lss_options = ['Automatic LSS', 'Greedy Descent', 'Guided Local Search', 'Simulated Annealing', 'Tabu Search', 'Generic Tabu Search']
+    lss_var = tk.StringVar()
+    lss_var.set('Automatic LSS')
+    lss_menu = tk.OptionMenu(window, lss_var, *lss_options)
+    lss_menu.config(bg='light sea green', activebackground='medium turquoise')
+    time_options = [1, 2, 5, 10, 30, 60, 120, 300, 600]
+    time_var = tk.IntVar()
+    time_var.set(30)
+    time_menu = tk.OptionMenu(window, time_var, *time_options)
+    time_menu.config(bg='light sea green', activebackground='medium turquoise')
     left_pane = tk.Frame(window, width=120, relief=tk.RAISED, bd=2)
     main_pane = scrolledtext.ScrolledText(window, wrap=tk.WORD)
     main_pane.insert(tk.INSERT, display)
     main_pane.configure(state='disabled')
+    button_clear = tk.Button(master=window, text='Clear text', command=clear)
 
 
     # Content on left sidebar
@@ -178,12 +200,6 @@ def gui():
 
     button_subpane2.grid(row=12, column=0, sticky='ns', padx=2, pady=5)
 
-
-    # Content on bottom left sidebar
-    button_clear = tk.Button(master=window, text='Clear text', command=clear)
-    button_clear.grid(row=2, column=0, sticky='nsew')
-
-
     # Content on top menubar
     radio_top = tk.IntVar(top_pane, 0)
     values_top = {'Summary' : 0, 'Routes' : 1, 'Console' : 2}
@@ -197,8 +213,12 @@ def gui():
     button_run.configure(command=run_routing)
     button_run.grid(row=0, column=0, sticky='nsew')
     top_pane.grid(row=0, column=1, sticky='nsew')
-    left_pane.grid(row=1, column=0, sticky='nsew')
-    main_pane.grid(row=1, rowspan=2, column=1, sticky='nsew')
+    fss_menu.grid(row=1, column=0, sticky='nsew')
+    lss_menu.grid(row=2, column=0, sticky='nsew')
+    time_menu.grid(row=3, column=0, sticky='nsew')
+    main_pane.grid(row=1, rowspan=5, column=1, sticky='nsew')
+    left_pane.grid(row=4, column=0, sticky='nsew')
+    button_clear.grid(row=5, column=0, sticky='nsew')
 
     
     # GUI mainloop

@@ -14,6 +14,11 @@ num_vehicles = len(vehicles)
 city = 'Paris'
 city_int = 0
 toll = 0
+fss = routing_enums_pb2.FirstSolutionStrategy.AUTOMATIC
+fss_string = 'Automatic'
+lss = routing_enums_pb2.LocalSearchMetaheuristic.AUTOMATIC
+lss_string = 'Automatic'
+timeout = 30
 
 # Carrier characteristics
 carriers = {}
@@ -27,12 +32,17 @@ carriers['cpkm_inside'] = [c+toll if num<3 else c for num, c in enumerate(carrie
 
 
 
-def set_variables(new_vehicles, new_city, new_toll):
+def set_variables(new_vehicles, new_city, new_toll, new_fss, new_lss, new_time):
     global vehicles
     global num_vehicles
     global city
     global city_int
     global toll
+    global fss
+    global fss_string
+    global lss
+    global lss_string
+    global timeout
     global carriers
 
     vehicles = new_vehicles
@@ -42,6 +52,53 @@ def set_variables(new_vehicles, new_city, new_toll):
     toll = new_toll
     carriers['cpkm_outside'] = carriers['cpkm_cities'][city_int]
     carriers['cpkm_inside'] = [c+toll if num<3 else c for num, c in enumerate(carriers['cpkm_outside'])]
+    timeout = new_time
+    fss_string = new_fss
+    lss_string = new_lss
+
+    match new_fss:
+        case 'Automatic FSS':
+            fss = routing_enums_pb2.FirstSolutionStrategy.AUTOMATIC
+        case 'Path Cheapest Arc':
+            fss = routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
+        case 'Path Most Constrained Arc':
+            fss = routing_enums_pb2.FirstSolutionStrategy.PATH_MOST_CONSTRAINED_ARC
+        case 'Evaluator Strategy':
+            fss = routing_enums_pb2.FirstSolutionStrategy.EVALUATOR_STRATEGY
+        case 'Savings':
+            fss = routing_enums_pb2.FirstSolutionStrategy.SAVINGS
+        case 'Sweep':
+            fss = routing_enums_pb2.FirstSolutionStrategy.SWEEP
+        case 'Christofides':
+            fss = routing_enums_pb2.FirstSolutionStrategy.CHRISTOFIDES
+        case 'All Unperformed':
+            fss = routing_enums_pb2.FirstSolutionStrategy.ALL_UNPERFORMED
+        case 'Best Insertion':
+            fss = routing_enums_pb2.FirstSolutionStrategy.BEST_INSERTION
+        case 'Parallel Cheapest Insertion':
+            fss = routing_enums_pb2.FirstSolutionStrategy.PARALLEL_CHEAPEST_INSERTION
+        case 'Local Cheapest Insertion':
+            fss = routing_enums_pb2.FirstSolutionStrategy.LOCAL_CHEAPEST_INSERTION
+        case 'Global Cheapest Arc':
+            fss = routing_enums_pb2.FirstSolutionStrategy.GLOBAL_CHEAPEST_ARC
+        case 'Local Cheapest Arc':
+            fss = routing_enums_pb2.FirstSolutionStrategy.LOCAL_CHEAPEST_ARC
+        case 'First Unbound Min Value':
+            fss = routing_enums_pb2.FirstSolutionStrategy.FIRST_UNBOUND_MIN_VALUE
+    
+    match new_lss:
+        case 'Automatic LSS':
+            lss = routing_enums_pb2.LocalSearchMetaheuristic.AUTOMATIC
+        case 'Greedy Descent':
+            lss = routing_enums_pb2.LocalSearchMetaheuristic.GREEDY_DESCENT
+        case 'Guided Local Search':
+            lss = routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
+        case 'Simulated Annealing':
+            lss = routing_enums_pb2.LocalSearchMetaheuristic.SIMULATED_ANNEALING
+        case 'Tabu Search':
+            lss = routing_enums_pb2.LocalSearchMetaheuristic.TABU_SEARCH
+        case 'Generic Tabu Search':
+            lss = routing_enums_pb2.LocalSearchMetaheuristic.GENERIC_TABU_SEARCH
 
 
 
@@ -70,6 +127,9 @@ def create_data_model():
 
 def print_solution(data, manager, routing, solution):
     # Prints solution on console/GUI
+    global fss
+    global lss
+    global timeout
     all_routes_string = 'Solution for {0} with {1}€/km toll and fleet {2}\n\n'.format(city, toll/1000, count_occurrences(vehicles))
     total_cost = 0
     total_distance = 0
@@ -121,12 +181,13 @@ def print_solution(data, manager, routing, solution):
     total_dist_string = f'Total distance of all routes: {total_distance/1000}km'
     total_time_string = f'Total time of all routes: {int_to_time(total_time)}'
     chosen_fleet_string = f'Chosen fleet: {count_occurrences(chosen_fleet)} ({len(chosen_fleet)} vehicles)'
+    chosen_parameter_string = f'Chosen search parameters: FSS={fss_string}, LSS={lss_string}, Timeout={timeout}s'
     print(all_routes_string)
     print(total_dist_string)
     print(total_cost_string)
     print(total_load_string)
     print(chosen_fleet_string)
-    return all_routes_string, total_load_string, total_dist_string, total_time_string, total_cost_string, chosen_fleet_string
+    return all_routes_string, total_load_string, total_dist_string, total_time_string, total_cost_string, chosen_fleet_string, chosen_parameter_string
 
 
 
@@ -227,16 +288,17 @@ def main():
     )
 
     # Setting first solution heuristic
+    global fss
+    global lss
+    global timeout
     try:
         search_parameters = pywrapcp.DefaultRoutingSearchParameters()
     except Exception as e:
         print('Error occured: ', e)
         input('Press any key to exit.')
-    search_parameters.first_solution_strategy = (
-        routing_enums_pb2.FirstSolutionStrategy.AUTOMATIC)
-    search_parameters.local_search_metaheuristic = (
-        routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH)
-    search_parameters.time_limit.FromSeconds(60)
+    search_parameters.first_solution_strategy = (fss)
+    search_parameters.local_search_metaheuristic = (lss)
+    search_parameters.time_limit.FromSeconds(timeout)
 
     # Solve the problem
     solution = routing.SolveWithParameters(search_parameters)
@@ -244,6 +306,8 @@ def main():
     # Print solution on console
     if solution:
         return print_solution(data, manager, routing, solution)
+    else:
+        return '[Error] No solution could be found!'
 
 if __name__ == '__main__':
     main()
