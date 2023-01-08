@@ -8,7 +8,22 @@ import ortools.constraint_solver.routing_parameters_pb2
 import time
 import pandas as pd
 import numpy as np
-from utils import *
+from utils import get_nodes, get_routes, get_distance_matrix_from_routes
+
+# Global variables
+vehicles = np.repeat(np.arange(1, 8), 10) # TODO: hardcoded for now, make editable later
+num_vehicles = len(vehicles)
+city = 'Paris' # TODO: hardcoded for now, make editable later
+toll = 0
+
+# Carrier characteristics
+carriers = {}
+carriers['ids'] = [1, 2, 3, 4, 5, 6, 7]
+carriers['payloads'] = [2800000, 883000, 670000, 2800000, 905000, 720000, 100000] # in g
+carriers['volumes'] = [34800, 5800, 3200, 21560, 7670, 4270, 200] # in liters
+carriers['cpkm_outside'] = [3020, 2856, 2800, 3216, 2921, 2866, 732]
+carriers['cpkm_inside'] = [c+toll if num<3 else c for num, c in enumerate(carriers['cpkm_outside'])]
+# TODO: Consider adding constraints for maximum travel distance, time, speed, ...
 
 
 
@@ -35,6 +50,7 @@ def create_data_model():
 
 def print_solution(data, manager, routing, solution):
     # Prints solution on console
+    all_routes_string = ''
     total_cost = 0
     total_distance = 0
     total_payload = 0
@@ -42,7 +58,7 @@ def print_solution(data, manager, routing, solution):
     chosen_fleet = []
     for vehicle_id in range(data['num_vehicles']):
         index = routing.Start(vehicle_id)
-        routes_string = f'Route for vehicle {vehicle_id} (Type {vehicles[vehicle_id]}):\n'
+        route_string = f'Route for vehicle {vehicle_id} (Type {vehicles[vehicle_id]}): '
         route_cost = 0
         route_distance = 0
         route_distance_inside = 0
@@ -53,28 +69,43 @@ def print_solution(data, manager, routing, solution):
             node_index = manager.IndexToNode(index)
             route_payload += data['demands_g'][node_index]
             route_volume += data['demands_liter'][node_index]
-            routes_string += f'[{node_index}] ({route_payload/1000}kg; {route_volume/1000}m3) -> '
+            route_string += f'[{node_index}] ({route_payload/1000}kg; {route_volume/1000}m3) -> '
             previous_index = index
             index = solution.Value(routing.NextVar(index))
             route_cost += routing.GetArcCostForVehicle(previous_index, index, vehicle_id)
             route_distance += data['distance_total'][node_index][manager.IndexToNode(index)]
             route_distance_inside += data['distance_inside'][node_index][manager.IndexToNode(index)]
             route_distance_outside += data['distance_outside'][node_index][manager.IndexToNode(index)]
-        routes_string += f'[{manager.IndexToNode(index)}] ({route_payload/1000}kg; {route_volume/1000}m3)\n'
-        routes_string += f'Distance of the route: {route_distance/1000}km ({route_distance_inside/1000}km inside; {route_distance_outside/1000}km outside)\n'
-        routes_string += f'Cost of the route: {route_cost/1000}€\n'
-        routes_string += f'Load of the route: {route_payload/1000}kg and {route_volume/1000}m3\n'
+        route_string += f'[{manager.IndexToNode(index)}] ({route_payload/1000}kg; {route_volume/1000}m3)\n'
+        route_string += f'Distance: {route_distance/1000}km ({route_distance_inside/1000}km inside; {route_distance_outside/1000}km outside), '
+        route_string += f'Cost: {route_cost/1000}€, '
+        route_string += f'Load: {route_payload/1000}kg and {route_volume/1000}m3\n'
         if route_cost > 0:
             total_distance += route_distance
             total_cost += route_cost
             total_payload += route_payload
             total_volume += route_volume
             chosen_fleet.append(vehicles[vehicle_id])
+            all_routes_string += route_string
     total_dist_string = f'Total distance of all routes: {total_distance/1000}km'
     total_cost_string = f'Total cost of all routes: {total_cost/1000}€'
     total_load_string = f'Total load of all routes: {total_payload/1000}kg and {total_volume/1000}m3'
     chosen_fleet_string = f'Chosen fleet: {chosen_fleet} ({len(chosen_fleet)} vehicles)'
-    return routes_string, total_dist_string, total_cost_string, total_load_string, chosen_fleet_string
+    print(all_routes_string)
+    print(total_dist_string)
+    print(total_cost_string)
+    print(total_load_string)
+    print(chosen_fleet_string)
+    return all_routes_string, total_dist_string, total_cost_string, total_load_string, chosen_fleet_string
+
+
+
+def set_variables(new_vehicles, new_city, new_toll):
+    vehicles = new_vehicles
+    num_vehicles = len(vehicles)
+    city = new_city
+    toll = new_toll
+    carriers['cpkm_inside'] = [c+toll if num<3 else c for num, c in enumerate(carriers['cpkm_outside'])]
 
 
 
@@ -124,7 +155,7 @@ def main():
         'Cost'
         )
     #cost_dimension = routing.GetDimensionOrDie('Cost')
-    #cost_dimension.SetGlobalSpanCostCoefficient(100)
+    #cost_dimension.SetGlobalSpanCostCoefficient(0)
 
     # Add Capacity (Weight) constraint
     def payload_callback(from_index):
@@ -167,46 +198,14 @@ def main():
         routing_enums_pb2.FirstSolutionStrategy.AUTOMATIC)
     search_parameters.local_search_metaheuristic = (
         routing_enums_pb2.LocalSearchMetaheuristic.AUTOMATIC)
-    search_parameters.time_limit.FromSeconds(600)
+    search_parameters.time_limit.FromSeconds(60)
 
     # Solve the problem
     solution = routing.SolveWithParameters(search_parameters)
 
     # Print solution on console
     if solution:
-        print(print_solution(data, manager, routing, solution))
-
-
+        return print_solution(data, manager, routing, solution)
 
 if __name__ == '__main__':
-    # import cProfile
-    # from pstats import Stats
-
-    # pr = cProfile.Profile()
-    # pr.enable()
-
-    # Global variables
-    make_gui()
-    vehicles = np.repeat(np.arange(1, 8), 10) # TODO: hardcoded for now, make editable later
-    num_vehicles = len(vehicles)
-    cost_callback_index_arr = []
-    city = 'Paris' # TODO: hardcoded for now, make editable later
-    toll = 0
-
-
-    # Carrier characteristics
-    carriers = {}
-    carriers['ids'] = [1, 2, 3, 4, 5, 6, 7]
-    carriers['payloads'] = [2800000, 883000, 670000, 2800000, 905000, 720000, 100000] # in g
-    carriers['volumes'] = [34800, 5800, 3200, 21560, 7670, 4270, 200] # in liters
-    carriers['cpkm_outside'] = [3020, 2856, 2800, 3216, 2921, 2866, 732]
-    carriers['cpkm_inside'] = [c+toll if num<3 else c for num, c in enumerate(carriers['cpkm_outside'])]
-    # TODO: Consider adding constraints for maximum travel distance, time, speed, ...
-
-
-
     main()
-
-    # pr.disable()
-    # stats = Stats(pr)
-    # stats.sort_stats('tottime').print_stats(10)
