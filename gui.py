@@ -3,6 +3,7 @@
 """ https://zetcode.com/tkinter/ """
 """ https://www.geeksforgeeks.org/radiobutton-in-tkinter-python/ """
 
+import time as ti
 import numpy as np
 import tkinter as tk
 from tkinter import ttk
@@ -11,7 +12,7 @@ from functools import partial
 from utils import count_occurrences, generate_vehicles
 from route_planning import set_variables, main
 
-display = 'Welcome to ETS\'s new routing software!'
+display = 'Welcome to ETS\'s new routing software!\nPlease select the relevant city, toll, and fleet in the left sidebar.\nGenerate routes with the button in the top left!\nAll vehicles are assumed to be available twice per day (morning/evening), which is why the solution might seem to use more vehicles than chosen.'
 texts = ['', '', '']
 new_vehicles = []
 new_city = 'Paris'
@@ -90,30 +91,33 @@ def gui():
         new_vehicles = generate_vehicles(existing_fleets[radio.get()-1]) if radio2.get() == 1 else np.repeat(np.arange(1, 8), fleet_nums[0]*2) if radio2.get() == 2 else generate_vehicles(fleet_nums)
         new_toll_str = label_value['text']
         for id, _ in enumerate(texts):
-            texts[id] += f'### Computing routes for {new_city} with{new_toll_str}tolls and fleet {count_occurrences(new_vehicles)} ###\n\n'
+            texts[id] += f'### Computing routes for {new_city} with{new_toll_str}tolls and fleet {count_occurrences(new_vehicles)} ###\n'
         update_display()
 
         set_variables(new_vehicles, new_city, new_toll*1000) # Convert toll to 0.1ct value used in router
+        start_time = ti.time()
         routes, load, dist, time, cost, fleet = main()
+        end_time = ti.time()
         texts[0] += f'{cost}\n{dist}\n{load}\n{time}\n{fleet}\n\n\n'
         texts[1] += routes+'\n\n\n'
+        texts[2] += f'### Solution found in {round(end_time-start_time, 3)}s\n\n'
         update_display()
     
 
     # Tkinter window set-up
     window = tk.Tk()
     window.title('ETS Routing Software')
-    window.rowconfigure(0, minsize=25, weight=1)
-    window.rowconfigure(1, minsize=400, weight=8)
-    window.rowconfigure(2, minsize=25, weight=1)
-    window.columnconfigure(0, minsize=100, weight=1)
-    window.columnconfigure(1, minsize=800, weight=9)
+    window.rowconfigure(0, minsize=25, weight=0)
+    window.rowconfigure(1, minsize=300, weight=1)
+    window.rowconfigure(2, minsize=25, weight=0)
+    window.columnconfigure(0, minsize=120, weight=0)
+    window.columnconfigure(1, minsize=600, weight=1)
 
 
     # Content panes set-up
     button_run = tk.Button(window, text='Run routing', background='green')
     top_pane = tk.Frame(window, relief=tk.RAISED, bd=2)
-    left_pane = tk.Frame(window, relief=tk.RAISED, bd=2)
+    left_pane = tk.Frame(window, width=120, relief=tk.RAISED, bd=2)
     main_pane = scrolledtext.ScrolledText(window, wrap=tk.WORD)
     main_pane.insert(tk.INSERT, display)
     main_pane.configure(state='disabled')
@@ -132,7 +136,7 @@ def gui():
         button.grid(row=value, column=0, sticky='w')
 
     separator = tk.ttk.Separator(left_pane, orient='horizontal')
-    separator.grid(row=4, columnspan=2, sticky='ew', pady=3)
+    separator.grid(row=4, columnspan=2, sticky='nsew', pady=3)
 
     #   Toll selection
     label_title = tk.Label(master=left_pane, text='Set city tolls:')
