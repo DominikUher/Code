@@ -7,7 +7,8 @@ import numpy as np
 import tkinter as tk
 from tkinter import ttk
 from tkinter import scrolledtext
-from utils import count_occurrences
+from functools import partial
+from utils import count_occurrences, generate_vehicles
 from route_planning import set_variables, main
 
 display = 'Welcome to ETS\'s new routing software!'
@@ -15,34 +16,33 @@ texts = ['', '', '']
 new_vehicles = []
 new_city = 'Paris'
 new_toll = 0.00
+existing_fleets = [[19, 0, 0, 0, 0, 0, 0], [8, 12, 0, 0, 0, 0, 0], [0, 17, 0, 0, 0, 0, 0]]
 
 
 def gui():
-    global display
-    global texts
-    global new_vehicles
-    global new_city
-    global new_toll
-
     # Function to increase discrete values for fleet selection
-    def int_increase():
-        value = int(label_value['text'])
-        label_value['text'] = f'{value+1}'
+    def int_increase(id):
+        value = fleet_nums[id]+1
+        fleet_labels[id]['text'] = f' {value} of each ' if id==0 else f'Type {id}: {value}'
+        fleet_nums[id] = value
     
     # Function to decrease discrete values for fleet selection
-    def int_decrease():
-        value = int(label_value['text'])
-        label_value['text'] = f'{max(value-1, 0)}'
+    def int_decrease(id):
+        value = max(fleet_nums[id]-1, 0)
+        fleet_labels[id]['text'] = f' {value} of each ' if id==0 else f'Type {id}: {value}'
+        fleet_nums[id] = value
 
     # Function to increase float values for toll
     def float_increase():
-        value = min(float(label_value['text'])+0.01, 1)
-        label_value['text'] = ' {:.2f} '.format(value)
+        global new_toll
+        new_toll = min(new_toll+0.01, 1)
+        label_value['text'] = ' {:.2f}€/km '.format(new_toll)
     
     # Function to decrease float values for toll
     def float_decrease():
-        value = max(float(label_value['text'])-0.01, 0)
-        label_value['text'] = ' {:.2f} '.format(value)
+        global new_toll
+        new_toll = max(new_toll-0.01, 0)
+        label_value['text'] = ' {:.2f}€/km '.format(new_toll)
 
     # Function to update displayed text based on tab selection
     def update_display():
@@ -60,20 +60,42 @@ def gui():
         texts = ['', '', '']
         update_display()
 
+    # Function to hide all buttons and labels relating to fleet selection
+    def hide_all_fleet():
+        for id, num in enumerate(fleet_nums):
+            fleet_mins[id].grid_forget()
+            fleet_labels[id].grid_forget()
+            fleet_plus[id].grid_forget()
+
+    # Function to show/hide the correct buttons and labels relating to fleet selection
+    def show_fleet_buttons():
+        if radio2.get() == 1:
+            hide_all_fleet()
+        elif radio2.get() == 2:
+            hide_all_fleet()
+            fleet_mins[0].grid(row=0, column=0, sticky='ns')
+            fleet_labels[0].grid(row=0, column=1, sticky='ns')
+            fleet_plus[0].grid(row=0, column=2, sticky='ns')
+        else:
+            for id, num in enumerate(fleet_nums):
+                if id>0:
+                    fleet_mins[id].grid(row=id-1, column=0, sticky='ns')
+                    fleet_labels[id].grid(row=id-1, column=1, sticky='ns')
+                    fleet_plus[id].grid(row=id-1, column=2, sticky='ns')
+
     # Function to call routing script with selected parameters
     def run_routing():
         global texts
-        new_vehicles = np.repeat(np.arange(1, 8), 10)
-        new_city = 'Paris' if radio.get()==1 else 'NewYork' if radio.get()==2 else 'Shanghai'
+        new_city = 'Paris' if radio.get() == 1 else 'NewYork' if radio.get() == 2 else 'Shanghai'
+        new_vehicles = generate_vehicles(existing_fleets[radio.get()-1]) if radio2.get() == 1 else np.repeat(np.arange(1, 8), fleet_nums[0]*2) if radio2.get() == 2 else generate_vehicles(fleet_nums)
         new_toll_str = label_value['text']
-        new_toll = float(new_toll_str)
         for id, _ in enumerate(texts):
-            texts[id] += f'### Computing routes for {new_city} with {new_toll_str}€/km tolls and fleet {count_occurrences(new_vehicles)} ###\n\n'
+            texts[id] += f'### Computing routes for {new_city} with{new_toll_str}tolls and fleet {count_occurrences(new_vehicles)} ###\n\n'
         update_display()
 
         set_variables(new_vehicles, new_city, new_toll*1000) # Convert toll to 0.1ct value used in router
-        routes, load, dist, cost, fleet = main()
-        texts[0] += f'{cost}\n{dist}\n{load}\n{fleet}\n\n\n'
+        routes, load, dist, time, cost, fleet = main()
+        texts[0] += f'{cost}\n{dist}\n{load}\n{time}\n{fleet}\n\n\n'
         texts[1] += routes+'\n\n\n'
         update_display()
     
@@ -98,6 +120,7 @@ def gui():
 
 
     # Content on left sidebar
+    #   City selection
     label_city = tk.Label(master=left_pane, text='Select city:')
     label_city.grid(row=0, column=0, sticky='w', pady=3)
 
@@ -111,13 +134,14 @@ def gui():
     separator = tk.ttk.Separator(left_pane, orient='horizontal')
     separator.grid(row=4, columnspan=2, sticky='ew', pady=3)
 
-    label_title = tk.Label(master=left_pane, text='Set tolls [€/km]:')
-    label_title.grid(row=5, column=0, pady=3)
+    #   Toll selection
+    label_title = tk.Label(master=left_pane, text='Set city tolls:')
+    label_title.grid(row=5, column=0, sticky='w', pady=3)
 
     button_subpane = tk.Frame(left_pane)
     button_minus = tk.Button(master=button_subpane, text=' - ', command=float_decrease, repeatdelay=250, repeatinterval=50)
     button_minus.grid(row=0, column=0, sticky='w')
-    label_value = tk.Label(master=button_subpane, text=' 0.00 ')
+    label_value = tk.Label(master=button_subpane, text=f' 0.00€/km ')
     label_value.grid(row=0, column=1)
     button_plus = tk.Button(master=button_subpane, text=' + ', command=float_increase, repeatdelay=250, repeatinterval=50)
     button_plus.grid(row=0, column=2, sticky='e')
@@ -125,6 +149,30 @@ def gui():
 
     separator2 = tk.ttk.Separator(left_pane, orient='horizontal')
     separator2.grid(row=7, columnspan=1, sticky='ew', pady=3)
+
+    #   Fleet selection
+    label_fleet = tk.Label(master=left_pane, text='Choose fleet:')
+    label_fleet.grid(row=8, column=0, sticky='w', pady=3)
+
+    radio2 = tk.IntVar(window, 1)
+    values2 = {'Existing' : 1, 'New (equal)' : 2, 'New (custom)' : 3}
+
+    for (text, value) in values2.items():
+        button = tk.Radiobutton(left_pane, text=text, variable=radio2, value=value, command=show_fleet_buttons)
+        button.grid(row=value+8, column=0, sticky='w')
+
+    button_subpane2 = tk.Frame(left_pane)
+    fleet_nums = [0, 0, 0, 0, 0, 0, 0, 0]
+    fleet_mins = []
+    fleet_labels = []
+    fleet_plus = []
+
+    for id, num in enumerate(fleet_nums):
+        fleet_mins.append(tk.Button(master=button_subpane2, text=' - ', command=partial(int_decrease, id), repeatdelay=250, repeatinterval=50))
+        fleet_labels.append(tk.Label(master=button_subpane2, text=f' {num} of each ' if id==0 else f'Type {id}: {num}'))
+        fleet_plus.append(tk.Button(master=button_subpane2, text=' + ', command=partial(int_increase, id), repeatdelay=250, repeatinterval=50))
+
+    button_subpane2.grid(row=12, column=0, sticky='ns', padx=2, pady=5)
 
 
     # Content on bottom left sidebar

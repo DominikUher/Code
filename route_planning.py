@@ -6,12 +6,13 @@ from ortools.constraint_solver import routing_enums_pb2
 from ortools.constraint_solver import pywrapcp
 import ortools.constraint_solver.routing_parameters_pb2
 import numpy as np
-from utils import get_nodes, get_routes, get_distance_matrix_from_routes, count_occurrences
+from utils import get_nodes, get_routes, get_distance_matrix_from_routes, get_time_matrix_from_routes, get_time_list_from_nodes, count_occurrences, int_to_time
 
 # Global variables defaults - Values are adjusted from GUI through set_variables()
-vehicles = np.repeat(np.arange(1, 8), 10)
+vehicles = np.repeat(1, 38)
 num_vehicles = len(vehicles)
 city = 'Paris'
+city_int = 0
 toll = 0
 
 # Carrier characteristics
@@ -19,7 +20,8 @@ carriers = {}
 carriers['ids'] = [1, 2, 3, 4, 5, 6, 7]
 carriers['payloads'] = [2800000, 883000, 670000, 2800000, 905000, 720000, 100000] # in g
 carriers['volumes'] = [34800, 5800, 3200, 21560, 7670, 4270, 200] # in liters
-carriers['cpkm_outside'] = [3020, 2856, 2800, 3216, 2921, 2866, 2732] #TODO: Adjust based on city
+carriers['cpkm_cities'] = [[2393, 2152, 2079, 2472, 2158, 2102, 3560], [3181, 3017, 2961, 3377, 3082, 3027, 3700], [1070, 892, 833, 1233, 944, 889, 1810]]
+carriers['cpkm_outside'] = carriers['cpkm_cities'][city_int]
 carriers['cpkm_inside'] = [c+toll if num<3 else c for num, c in enumerate(carriers['cpkm_outside'])]
 # TODO: Consider adding constraints for maximum travel distance, time, speed, ...
 
@@ -29,13 +31,16 @@ def set_variables(new_vehicles, new_city, new_toll):
     global vehicles
     global num_vehicles
     global city
+    global city_int
     global toll
     global carriers
 
     vehicles = new_vehicles
     num_vehicles = len(vehicles)
     city = new_city
+    city_int = 0 if city=='Paris' else 1 if city=='NewYork' else 2
     toll = new_toll
+    carriers['cpkm_outside'] = carriers['cpkm_cities'][city_int]
     carriers['cpkm_inside'] = [c+toll if num<3 else c for num, c in enumerate(carriers['cpkm_outside'])]
 
 
@@ -51,6 +56,8 @@ def create_data_model():
     data['distance_total'] = get_distance_matrix_from_routes(routes, num_nodes, 'Total')
     data['distance_inside'] = get_distance_matrix_from_routes(routes, num_nodes, 'Inside')
     data['distance_outside'] = get_distance_matrix_from_routes(routes, num_nodes, 'Outside')
+    data['time_routes'] = get_time_matrix_from_routes(routes, num_nodes)
+    data['time_nodes'] = get_time_list_from_nodes(nodes)
     data['demands_g'] = [d*1000 for d in nodes['Demand[kg]'].values]
     data['demands_liter'] = nodes['Demand[m^3*10^-3]'].values
     data['vehicle_payloads'] = [carriers['payloads'][i-1] for i in vehicles]
@@ -62,10 +69,11 @@ def create_data_model():
 
 
 def print_solution(data, manager, routing, solution):
-    # Prints solution on console
+    # Prints solution on console/GUI
     all_routes_string = 'Solution for {0} with {1}€/km toll and fleet {2}\n\n'.format(city, toll/1000, count_occurrences(vehicles))
     total_cost = 0
     total_distance = 0
+    total_time = 0
     total_payload = 0
     total_volume = 0
     chosen_fleet = []
@@ -76,6 +84,7 @@ def print_solution(data, manager, routing, solution):
         route_distance = 0
         route_distance_inside = 0
         route_distance_outside = 0
+        route_time = 0
         route_payload = 0
         route_volume = 0
         while not routing.IsEnd(index):
@@ -89,6 +98,7 @@ def print_solution(data, manager, routing, solution):
             route_distance += data['distance_total'][node_index][manager.IndexToNode(index)]
             route_distance_inside += data['distance_inside'][node_index][manager.IndexToNode(index)]
             route_distance_outside += data['distance_outside'][node_index][manager.IndexToNode(index)]
+            route_time += data['time_routes'][node_index][manager.IndexToNode(index)] + data['time_nodes'][manager.IndexToNode(index)]
         route_string += f'[{manager.IndexToNode(index)}] ({route_payload/1000}kg; {route_volume/1000}m3)\n'
         route_cpkm_in = carriers['cpkm_inside'][vehicles[vehicle_id]-1]/1000
         route_cpkm_out = carriers['cpkm_outside'][vehicles[vehicle_id]-1]/1000
@@ -97,8 +107,10 @@ def print_solution(data, manager, routing, solution):
         route_max_payload = carriers['payloads'][vehicles[vehicle_id]-1]/1000
         route_max_volume = carriers['volumes'][vehicles[vehicle_id]-1]/1000
         route_string += f'Load: {route_payload/1000}/{route_max_payload}kg and {route_volume/1000}/{route_max_volume}m3\n'
+        route_string += f'Time: {int_to_time(route_time)}\n'
         if route_cost > 0:
             total_distance += route_distance
+            total_time += route_time
             total_cost += route_cost
             total_payload += route_payload
             total_volume += route_volume
@@ -107,13 +119,14 @@ def print_solution(data, manager, routing, solution):
     total_load_string = f'Total load of all routes: {total_payload/1000}kg and {total_volume/1000}m3'
     total_cost_string = f'Total cost of all routes: {total_cost/1000}€'
     total_dist_string = f'Total distance of all routes: {total_distance/1000}km'
+    total_time_string = f'Total time of all routes: {int_to_time(total_time)}'
     chosen_fleet_string = f'Chosen fleet: {count_occurrences(chosen_fleet)} ({len(chosen_fleet)} vehicles)'
     print(all_routes_string)
     print(total_dist_string)
     print(total_cost_string)
     print(total_load_string)
     print(chosen_fleet_string)
-    return all_routes_string, total_load_string, total_dist_string, total_cost_string, chosen_fleet_string
+    return all_routes_string, total_load_string, total_dist_string, total_time_string, total_cost_string, chosen_fleet_string
 
 
 
@@ -154,7 +167,7 @@ def main():
         cost_callbacks.append(routing.RegisterTransitCallback(cost_callback(vehicle_type-1)))
         routing.SetArcCostEvaluatorOfVehicle(cost_callbacks[-1], vehicle_id)
 
-    # Add Cost constraint
+    # Add Cost constraints
     routing.AddDimensionWithVehicleTransits(
         cost_callbacks,
         0,
@@ -162,8 +175,8 @@ def main():
         True,
         'Cost'
         )
-    #cost_dimension = routing.GetDimensionOrDie('Cost')
-    #cost_dimension.SetGlobalSpanCostCoefficient(0)
+    cost_dimension = routing.GetDimensionOrDie('Cost')
+    cost_dimension.SetGlobalSpanCostCoefficient(0)
 
     # Add Capacity (Weight) constraint
     def payload_callback(from_index):
@@ -196,6 +209,23 @@ def main():
         'Volume'
     )
 
+    # Add Time dimension.
+    def time_callback(from_index, to_index):
+        # Returns the time  between the two nodes
+        # Convert from routing variable Index to distance matrix NodeIndex
+        from_node = manager.IndexToNode(from_index)
+        to_node = manager.IndexToNode(to_index)
+        return data['time_routes'][from_node][to_node] + data['time_nodes'][to_node]
+
+    time_callback_index = routing.RegisterTransitCallback(time_callback)
+    routing.AddDimension(
+        time_callback_index,
+        0, # zero slack
+        28800, # maximum 8h
+        True, # starts at zero
+        'Time'
+    )
+
     # Setting first solution heuristic
     try:
         search_parameters = pywrapcp.DefaultRoutingSearchParameters()
@@ -205,7 +235,7 @@ def main():
     search_parameters.first_solution_strategy = (
         routing_enums_pb2.FirstSolutionStrategy.AUTOMATIC)
     search_parameters.local_search_metaheuristic = (
-        routing_enums_pb2.LocalSearchMetaheuristic.AUTOMATIC)
+        routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH)
     search_parameters.time_limit.FromSeconds(60)
 
     # Solve the problem
