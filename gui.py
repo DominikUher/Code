@@ -81,8 +81,11 @@ def gui():
     # Tkinter window set-up
     window = tk.Tk()
     window.title('ETS Routing Software')
-    window.rowconfigure(1, minsize=800, weight=1)
-    window.columnconfigure(1, minsize=800, weight=1)
+    window.rowconfigure(0, minsize=25, weight=1)
+    window.rowconfigure(1, minsize=400, weight=8)
+    window.rowconfigure(2, minsize=25, weight=1)
+    window.columnconfigure(0, minsize=100, weight=1)
+    window.columnconfigure(1, minsize=800, weight=9)
 
 
     # Content panes set-up
@@ -106,7 +109,7 @@ def gui():
         button.grid(row=value, column=0, sticky='w')
 
     separator = tk.ttk.Separator(left_pane, orient='horizontal')
-    separator.grid(row=4, columnspan=1, sticky='ew', pady=3)
+    separator.grid(row=4, columnspan=2, sticky='ew', pady=3)
 
     label_title = tk.Label(master=left_pane, text='Set tolls [€/km]:')
     label_title.grid(row=5, column=0, pady=3)
@@ -124,23 +127,26 @@ def gui():
     separator2.grid(row=7, columnspan=1, sticky='ew', pady=3)
 
 
+    # Content on bottom left sidebar
+    button_clear = tk.Button(master=window, text='Clear text', command=clear)
+    button_clear.grid(row=2, column=0, sticky='nsew')
+
+
     # Content on top menubar
     radio_top = tk.IntVar(top_pane, 0)
     values_top = {'Summary' : 0, 'Routes' : 1, 'Console' : 2}
 
     for (text, value) in values_top.items():
         button = tk.Radiobutton(top_pane, text=text, variable=radio_top, value=value, indicator=0, background='light gray', command=update_display)
-        button.grid(row=0, column=value, sticky='ns')
+        button.grid(row=0, column=value, sticky='nsew')
 
-    button_clear = tk.Button(master=top_pane, text='Clear text', command=clear)
-    button_clear.grid(row=0, column=3, sticky='ne')
 
     # Content pane grid managers
     button_run.configure(command=run_routing)
     button_run.grid(row=0, column=0, sticky='nsew')
-    top_pane.grid(row=0, column=1, sticky='nw')
-    left_pane.grid(row=1, column=0, sticky='ns')
-    main_pane.grid(row=1, column=1, sticky='nsew')
+    top_pane.grid(row=0, column=1, sticky='nsew')
+    left_pane.grid(row=1, column=0, sticky='nsew')
+    main_pane.grid(row=1, rowspan=2, column=1, sticky='nsew')
 
     
     # GUI mainloop
