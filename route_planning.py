@@ -21,7 +21,7 @@ carriers = {}
 carriers['ids'] = [1, 2, 3, 4, 5, 6, 7]
 carriers['payloads'] = [2800000, 883000, 670000, 2800000, 905000, 720000, 100000] # in g
 carriers['volumes'] = [34800, 5800, 3200, 21560, 7670, 4270, 200] # in liters
-carriers['cpkm_outside'] = [3020, 2856, 2800, 3216, 2921, 2866, 732]
+carriers['cpkm_outside'] = [3020, 2856, 2800, 3216, 2921, 2866, 2732]
 carriers['cpkm_inside'] = [c+toll if num<3 else c for num, c in enumerate(carriers['cpkm_outside'])]
 # TODO: Consider adding constraints for maximum travel distance, time, speed, ...
 
