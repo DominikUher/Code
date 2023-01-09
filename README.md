@@ -1,6 +1,6 @@
 This repository contains the code for the seminar 'Sustainable Transportation Systems'
 
-The routing code based on Google's OR-Tools can be found in RoutePlanningSoftware.py
+The routing code based on Google's OR-Tools can be found in route_planning.py
 
 All code relating to the graphical user interface is at gui.py
 
