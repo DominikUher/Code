@@ -12,7 +12,7 @@ from functools import partial
 from utils import count_occurrences, generate_vehicles
 from route_planning import set_variables, main
 
-display = 'Welcome to ETS\'s new routing software!\nPlease select the relevant city, toll, and fleet in the left sidebar.\nChoose your preferred first solution strategy (FSS), local search strategy (LSS), and time limit [sec].\nGenerate routes with the button in the top left!\nAll vehicles are assumed to be available twice per day (morning/evening), which is why the solution might seem to use more vehicles than chosen.'
+display = 'Welcome to ETS\'s new routing software!\n\nSelect the relevant city, toll, and fleet in the left sidebar.\nChoose your preferred first solution strategy (FSS), local search strategy (LSS), and time limit [sec] via the blue option menus.\nGenerate routes with the green button in the top left!\n\nAll vehicles are assumed to be available for routes twice per day, which is why the solution may use up to double the vehicles chosen.'
 texts = ['', '', '']
 new_vehicles = []
 new_city = 'Paris'
