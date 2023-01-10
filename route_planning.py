@@ -305,14 +305,14 @@ def main():
     try:
         solution = routing.SolveWithParameters(search_parameters)
     except Exception as e:
-        return '', '', '', '', f'### Error occurred while solving: {e}', '', f'### {e}'
+        return '', '', '', '', f'Error occurred while solving: {e}', '', f'### {e}'
 
 
     # Print solution on console
     if solution:
         return print_solution(data, manager, routing, solution)
     else:
-        return '', '', 'Please check your chosen parameters for feasibility.', '', '### No solution could be found!', '', 'No solution could be found'
+        return '', '', 'Please check your chosen parameters for feasibility.', '', 'No solution could be found!', '', 'No solution could be found'
 
 if __name__ == '__main__':
     main()
