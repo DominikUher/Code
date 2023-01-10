@@ -102,7 +102,7 @@ def gui():
             start_time = ti.time()
             routes, load, dist, time, cost, fleet, params = main()
             end_time = ti.time()
-            texts[0] += f'{cost}\n{dist}\n{load}\n{time}\n{fleet}\n\n'
+            texts[0] += f'{cost}\n{dist}\n{load}\n{time}\n{fleet}\n\n' if load else f'{cost}\n{dist}\n\n'
             texts[1] += routes+'\n\n____________________________________________________________\n\n\n\n\n'
             texts[2] += f'{params}\nSearch completed in {round(end_time-start_time, 3)}s\n\n'
         else:
