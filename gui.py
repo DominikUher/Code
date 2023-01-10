@@ -94,16 +94,21 @@ def gui():
         new_lss = lss_var.get()
         new_time = time_var.get()
         for id, _ in enumerate(texts):
-            texts[id] += f'### Computing routes for {new_city} with{new_toll_str}tolls and fleet {count_occurrences(new_vehicles)} ###\n'
+            texts[id] += f'### Solving {new_city} with{new_toll_str}tolls and fleet {count_occurrences(new_vehicles)}\n'
         update_display()
 
-        set_variables(new_vehicles, new_city, new_toll*1000, new_fss, new_lss, new_time) # Convert toll to 0.1ct value used in router
-        start_time = ti.time()
-        routes, load, dist, time, cost, fleet, params = main()
-        end_time = ti.time()
-        texts[0] += f'{cost}\n{dist}\n{load}\n{time}\n{fleet}\n\n\n'
-        texts[1] += routes+'\n\n\n'
-        texts[2] += f'### {params} ###\nSolution found in {round(end_time-start_time, 3)}s ###\n\n'
+        if len(new_vehicles)>0:
+            set_variables(new_vehicles, new_city, new_toll*1000, new_fss, new_lss, new_time) # Convert toll to 0.1ct value used in router
+            start_time = ti.time()
+            routes, load, dist, time, cost, fleet, params = main()
+            end_time = ti.time()
+            texts[0] += f'{cost}\n{dist}\n{load}\n{time}\n{fleet}\n\n'
+            texts[1] += routes+'\n\n____________________________________________________________\n\n\n\n\n'
+            texts[2] += f'{params}\nSearch completed in {round(end_time-start_time, 3)}s\n\n'
+        else:
+            texts[0] += 'Infeasible parameter set detected!\nPlease check your chosen parameters\n\n'
+            texts[1] += 'No solution possible\n____________________________________________________________\n\n'
+            texts[2] += f'Search parameters: FSS={new_fss}, LSS={new_lss}, t={new_time}s\nNo solution possible\n\n'
         update_display()
     
 

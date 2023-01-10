@@ -5,7 +5,6 @@ from collections import defaultdict
 
 # Function to compute a euclidean distrance matrix from lat/lon
 def compute_euclidean_distance_matrix(locations):
-    """Creates callback to return distance between points."""
     distances = {}
     for from_counter, from_node in enumerate(locations):
         distances[from_counter] = {}

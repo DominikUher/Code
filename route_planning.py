@@ -9,7 +9,7 @@ import numpy as np
 from utils import get_nodes, get_routes, get_distance_matrix_from_routes, get_time_matrix_from_routes, get_time_list_from_nodes, count_occurrences, int_to_time
 
 # Global variables defaults - Values are adjusted from GUI through set_variables()
-vehicles = np.repeat(1, 38)
+vehicles = [np.repeat(1, 38)]
 num_vehicles = len(vehicles)
 city = 'Paris'
 city_int = 0
@@ -130,7 +130,8 @@ def print_solution(data, manager, routing, solution):
     global fss
     global lss
     global timeout
-    all_routes_string = 'Solution for {0} with {1}€/km toll and fleet {2}\n\n'.format(city, toll/1000, count_occurrences(vehicles))
+    toll_str = '{:.2f}'.format(toll/1000)
+    all_routes_string = ''
     total_cost = 0
     total_distance = 0
     total_time = 0
@@ -181,7 +182,7 @@ def print_solution(data, manager, routing, solution):
     total_dist_string = f'Total distance of all routes: {total_distance/1000}km'
     total_time_string = f'Total time of all routes: {int_to_time(total_time)}'
     chosen_fleet_string = f'Chosen fleet: {count_occurrences(chosen_fleet)} ({len(chosen_fleet)} vehicles)'
-    chosen_parameter_string = f'Chosen search parameters: FSS={fss_string}, LSS={lss_string}, Timeout={timeout}s'
+    chosen_parameter_string = f'Solution for {city} with {toll_str}€/km tolls and fleet {count_occurrences(vehicles)}\nSearch parameters: FSS={fss_string}, LSS={lss_string}, t={timeout}s'
     print(all_routes_string)
     print(total_dist_string)
     print(total_cost_string)
@@ -301,13 +302,17 @@ def main():
     search_parameters.time_limit.FromSeconds(timeout)
 
     # Solve the problem
-    solution = routing.SolveWithParameters(search_parameters)
+    try:
+        solution = routing.SolveWithParameters(search_parameters)
+    except Exception as e:
+        return '', '', '', '', f'### Error occurred while solving: {e}', '', f'### {e}'
+
 
     # Print solution on console
     if solution:
         return print_solution(data, manager, routing, solution)
     else:
-        return '[Error] No solution could be found!'
+        return '', '', 'Please check your chosen parameters for feasibility.', '', '### No solution could be found!', '', 'No solution could be found'
 
 if __name__ == '__main__':
     main()
