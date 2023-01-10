@@ -18,6 +18,8 @@ new_vehicles = []
 new_city = 'Paris'
 new_toll = 0.00
 existing_fleets = [[19, 0, 0, 0, 0, 0, 0], [8, 12, 0, 0, 0, 0, 0], [0, 17, 0, 0, 0, 0, 0]]
+busy = False
+busy_end = 0
 
 
 def gui():
@@ -48,7 +50,14 @@ def gui():
     # Function to update displayed text based on tab selection
     def update_display():
         global texts
+        global busy
+        global busy_end
         display = texts[radio_top.get()]
+        if busy:
+            label_busy.config(text=f'busy until ≤ {busy_end}')
+            label_busy.grid(row=0, column=3, sticky='nsew', padx=5)
+        else:
+            label_busy.grid_forget()
         main_pane.configure(state='normal')
         main_pane.delete('1.0', tk.END)
         main_pane.insert(tk.INSERT, display)
@@ -87,6 +96,8 @@ def gui():
     # Function to call routing script with selected parameters
     def run_routing():
         global texts
+        global busy
+        global busy_end
         new_city = 'Paris' if radio.get() == 1 else 'NewYork' if radio.get() == 2 else 'Shanghai'
         new_vehicles = generate_vehicles(existing_fleets[radio.get()-1]) if radio2.get() == 1 else np.repeat(np.arange(1, 8), fleet_nums[0]*2) if radio2.get() == 2 else generate_vehicles(fleet_nums[1:])
         new_toll_str = label_value['text']
@@ -95,6 +106,8 @@ def gui():
         new_time = time_var.get()
         for id, _ in enumerate(texts):
             texts[id] += f'### Solving {new_city} with{new_toll_str}tolls and fleet {count_occurrences(new_vehicles)}\n'
+        busy = True
+        busy_end = ti.strftime('%X', ti.localtime(ti.time()+new_time))
         update_display()
 
         if len(new_vehicles)>0:
@@ -109,6 +122,7 @@ def gui():
             texts[0] += 'Infeasible parameter set detected!\nPlease check your chosen parameters\n\n'
             texts[1] += 'No solution possible\n____________________________________________________________\n\n'
             texts[2] += f'Search parameters: FSS={new_fss}, LSS={new_lss}, t={new_time}s\nNo solution possible\n\n'
+        busy = False
         update_display()
     
 
@@ -147,7 +161,7 @@ def gui():
     main_pane = scrolledtext.ScrolledText(window, wrap=tk.WORD)
     main_pane.insert(tk.INSERT, display)
     main_pane.configure(state='disabled')
-    button_clear = tk.Button(master=window, text='Clear text', command=clear)
+    button_clear = tk.Button(master=window, text='Clear text', command=clear, bg='dark gray')
 
 
     # Content on left sidebar
@@ -205,6 +219,7 @@ def gui():
 
     button_subpane2.grid(row=12, column=0, sticky='ns', padx=2, pady=5)
 
+
     # Content on top menubar
     radio_top = tk.IntVar(top_pane, 0)
     values_top = {'Summary' : 0, 'Routes' : 1, 'Console' : 2}
@@ -212,6 +227,8 @@ def gui():
     for (text, value) in values_top.items():
         button = tk.Radiobutton(top_pane, text=text, variable=radio_top, value=value, indicator=0, background='light gray', command=update_display)
         button.grid(row=0, column=value, sticky='nsew')
+
+    label_busy = tk.Label(master=top_pane, text=f'Busy (done by <={busy_end}', fg='red')
 
 
     # Content pane grid managers
