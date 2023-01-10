@@ -9,7 +9,7 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import scrolledtext
 from functools import partial
-from utils import count_occurrences, generate_vehicles
+from utils import count_occurrences, generate_vehicles, write_to_csv
 from route_planning import set_variables, main
 
 display = 'Welcome to ETS\'s new routing software!\n\nSelect the relevant city, toll, and fleet in the left sidebar.\nChoose your preferred first solution strategy (FSS), local search strategy (LSS), and time limit [sec] via the blue option menus.\nGenerate routes with the green button in the top left!\n\nAll vehicles are assumed to be available for routes twice per day, which is why the solution may use up to double the vehicles chosen.'
@@ -113,7 +113,7 @@ def gui():
         if len(new_vehicles)>0:
             set_variables(new_vehicles, new_city, new_toll*1000, new_fss, new_lss, new_time) # Convert toll to 0.1ct value used in router
             start_time = ti.time()
-            routes, load, dist, time, cost, fleet, params = main()
+            routes, load, dist, time, cost, fleet, params, csv_list = main()
             end_time = ti.time()
             texts[0] += f'{cost}\n{dist}\n{load}\n{time}\n{fleet}\n\n' if load else f'{cost}\n{dist}\n\n'
             texts[1] += routes+'\n\n____________________________________________________________\n\n\n\n\n' if load else 'No solution could be found\n____________________________________________________________\n\n'
@@ -122,6 +122,8 @@ def gui():
             texts[0] += 'Infeasible parameter set detected!\nPlease check your chosen parameters\n\n'
             texts[1] += 'No solution possible\n____________________________________________________________\n\n'
             texts[2] += f'Search parameters: FSS={new_fss}, LSS={new_lss}, t={new_time}s\nNo solution possible\n\n'
+        if csv_list:
+            write_to_csv(csv_list, new_city, int(new_toll*100), new_time, round(end_time-start_time, 3))
         busy = False
         update_display()
     

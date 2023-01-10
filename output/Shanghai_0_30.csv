@@ -1,0 +1,2 @@
+City;Toll [ct];Max_Time [s];Actual_Time [s];Total_Cost [€];Fleet;Total_Weight [kg];Total_Volume [m3];Total_Distance [km]
+Shanghai;0;30;3.121;1032.755;{2: 17};8496.0;93.919;1157.803

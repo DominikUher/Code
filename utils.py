@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import math
 from collections import defaultdict
+from ortools.constraint_solver import routing_enums_pb2
 
 # Function to compute a euclidean distrance matrix from lat/lon
 def compute_euclidean_distance_matrix(locations):
@@ -80,3 +81,78 @@ def get_time_list_from_nodes(nodes):
     time_list = nodes['Duration']
     s_list = [time_to_int(x) for x in time_list]
     return s_list
+
+def write_to_csv(csv, city, toll, timeout, time):
+    data_out = {
+            'City': [city],
+            'Toll [ct]': [toll],
+            'Max_Time [s]': [timeout],
+            'Actual_Time [s]': [time],
+            'Total_Cost [€]': [csv[0]],
+            'Fleet': [csv[1]],
+            'Total_Weight [kg]': [csv[2]],
+            'Total_Volume [m3]': [csv[3]],
+            'Total_Distance [km]': [csv[4]],
+        }
+    df = pd.DataFrame(data_out)
+    df.to_csv(f'./output/{city}_{toll}_{timeout}.csv', index=False, sep=';')
+
+def check_infeasibility(vehicle_weights, vehicle_volumes, demand_weights, demand_volumes):
+    available_weight = np.sum(vehicle_weights)
+    available_volume = np.sum(vehicle_volumes)
+    needed_weight = np.sum(demand_weights)
+    needed_volume = np.sum(demand_volumes)
+    if available_weight < needed_weight:
+        return True, ['No solution possible!', '', f'Demanded weight {needed_weight/1000}kg > Available capacity {available_weight/1000}kg', '', 'No solution possible!', '', 'No solution possible due to insufficient weight capacity', False]
+    elif available_volume < needed_volume:
+        return True, ['No solution possible!', '', f'Demanded volume {needed_volume/1000}m3 > Available volume {available_volume/1000}m3', '', 'No solution possible!', '', 'No solution possible due to insufficient volume capacity', False]
+    else:
+        return False, ''
+
+def get_fss(new_fss):
+    match new_fss:
+        case 'Automatic FSS':
+            fss = routing_enums_pb2.FirstSolutionStrategy.AUTOMATIC
+        case 'Path Cheapest Arc':
+            fss = routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
+        case 'Path Most Constrained Arc':
+            fss = routing_enums_pb2.FirstSolutionStrategy.PATH_MOST_CONSTRAINED_ARC
+        case 'Evaluator Strategy':
+            fss = routing_enums_pb2.FirstSolutionStrategy.EVALUATOR_STRATEGY
+        case 'Savings':
+            fss = routing_enums_pb2.FirstSolutionStrategy.SAVINGS
+        case 'Sweep':
+            fss = routing_enums_pb2.FirstSolutionStrategy.SWEEP
+        case 'Christofides':
+            fss = routing_enums_pb2.FirstSolutionStrategy.CHRISTOFIDES
+        case 'All Unperformed':
+            fss = routing_enums_pb2.FirstSolutionStrategy.ALL_UNPERFORMED
+        case 'Best Insertion':
+            fss = routing_enums_pb2.FirstSolutionStrategy.BEST_INSERTION
+        case 'Parallel Cheapest Insertion':
+            fss = routing_enums_pb2.FirstSolutionStrategy.PARALLEL_CHEAPEST_INSERTION
+        case 'Local Cheapest Insertion':
+            fss = routing_enums_pb2.FirstSolutionStrategy.LOCAL_CHEAPEST_INSERTION
+        case 'Global Cheapest Arc':
+            fss = routing_enums_pb2.FirstSolutionStrategy.GLOBAL_CHEAPEST_ARC
+        case 'Local Cheapest Arc':
+            fss = routing_enums_pb2.FirstSolutionStrategy.LOCAL_CHEAPEST_ARC
+        case 'First Unbound Min Value':
+            fss = routing_enums_pb2.FirstSolutionStrategy.FIRST_UNBOUND_MIN_VALUE
+    return fss
+
+def get_lss(new_lss):    
+    match new_lss:
+        case 'Automatic LSS':
+            lss = routing_enums_pb2.LocalSearchMetaheuristic.AUTOMATIC
+        case 'Greedy Descent':
+            lss = routing_enums_pb2.LocalSearchMetaheuristic.GREEDY_DESCENT
+        case 'Guided Local Search':
+            lss = routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
+        case 'Simulated Annealing':
+            lss = routing_enums_pb2.LocalSearchMetaheuristic.SIMULATED_ANNEALING
+        case 'Tabu Search':
+            lss = routing_enums_pb2.LocalSearchMetaheuristic.TABU_SEARCH
+        case 'Generic Tabu Search':
+            lss = routing_enums_pb2.LocalSearchMetaheuristic.GENERIC_TABU_SEARCH
+    return lss

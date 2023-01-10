@@ -4,12 +4,11 @@
 
 from ortools.constraint_solver import routing_enums_pb2
 from ortools.constraint_solver import pywrapcp
-import ortools.constraint_solver.routing_parameters_pb2
 import numpy as np
-from utils import get_nodes, get_routes, get_distance_matrix_from_routes, get_time_matrix_from_routes, get_time_list_from_nodes, count_occurrences, int_to_time
+from utils import get_nodes, get_routes, get_distance_matrix_from_routes, get_time_matrix_from_routes, get_time_list_from_nodes, count_occurrences, int_to_time, get_fss, get_lss, check_infeasibility
 
 # Global variables defaults - Values are adjusted from GUI through set_variables()
-vehicles = [np.repeat(1, 38)]
+vehicles = np.repeat(1, 38)
 num_vehicles = len(vehicles)
 city = 'Paris'
 city_int = 0
@@ -25,25 +24,23 @@ carriers = {}
 carriers['ids'] = [1, 2, 3, 4, 5, 6, 7]
 carriers['payloads'] = [2800000, 883000, 670000, 2800000, 905000, 720000, 100000] # in g
 carriers['volumes'] = [34800, 5800, 3200, 21560, 7670, 4270, 200] # in liters
+carriers['ranges'] = [1028571, 875000, 847458, 79710, 205023, 118977, 100000] # in m
 carriers['cpkm_cities'] = [[2393, 2152, 2079, 2472, 2158, 2102, 3560], [3181, 3017, 2961, 3377, 3082, 3027, 3700], [1070, 892, 833, 1233, 944, 889, 1810]]
 carriers['cpkm_outside'] = carriers['cpkm_cities'][city_int]
 carriers['cpkm_inside'] = [c+toll if num<3 else c for num, c in enumerate(carriers['cpkm_outside'])]
-# TODO: Consider adding constraints for maximum travel distance, time, speed, ...
 
 
 
 def set_variables(new_vehicles, new_city, new_toll, new_fss, new_lss, new_time):
     global vehicles
-    global num_vehicles
     global city
-    global city_int
-    global toll
+    global carriers
+    global num_vehicles
     global fss
     global fss_string
     global lss
     global lss_string
     global timeout
-    global carriers
 
     vehicles = new_vehicles
     num_vehicles = len(vehicles)
@@ -55,54 +52,14 @@ def set_variables(new_vehicles, new_city, new_toll, new_fss, new_lss, new_time):
     timeout = new_time
     fss_string = new_fss
     lss_string = new_lss
-
-    match new_fss:
-        case 'Automatic FSS':
-            fss = routing_enums_pb2.FirstSolutionStrategy.AUTOMATIC
-        case 'Path Cheapest Arc':
-            fss = routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
-        case 'Path Most Constrained Arc':
-            fss = routing_enums_pb2.FirstSolutionStrategy.PATH_MOST_CONSTRAINED_ARC
-        case 'Evaluator Strategy':
-            fss = routing_enums_pb2.FirstSolutionStrategy.EVALUATOR_STRATEGY
-        case 'Savings':
-            fss = routing_enums_pb2.FirstSolutionStrategy.SAVINGS
-        case 'Sweep':
-            fss = routing_enums_pb2.FirstSolutionStrategy.SWEEP
-        case 'Christofides':
-            fss = routing_enums_pb2.FirstSolutionStrategy.CHRISTOFIDES
-        case 'All Unperformed':
-            fss = routing_enums_pb2.FirstSolutionStrategy.ALL_UNPERFORMED
-        case 'Best Insertion':
-            fss = routing_enums_pb2.FirstSolutionStrategy.BEST_INSERTION
-        case 'Parallel Cheapest Insertion':
-            fss = routing_enums_pb2.FirstSolutionStrategy.PARALLEL_CHEAPEST_INSERTION
-        case 'Local Cheapest Insertion':
-            fss = routing_enums_pb2.FirstSolutionStrategy.LOCAL_CHEAPEST_INSERTION
-        case 'Global Cheapest Arc':
-            fss = routing_enums_pb2.FirstSolutionStrategy.GLOBAL_CHEAPEST_ARC
-        case 'Local Cheapest Arc':
-            fss = routing_enums_pb2.FirstSolutionStrategy.LOCAL_CHEAPEST_ARC
-        case 'First Unbound Min Value':
-            fss = routing_enums_pb2.FirstSolutionStrategy.FIRST_UNBOUND_MIN_VALUE
-    
-    match new_lss:
-        case 'Automatic LSS':
-            lss = routing_enums_pb2.LocalSearchMetaheuristic.AUTOMATIC
-        case 'Greedy Descent':
-            lss = routing_enums_pb2.LocalSearchMetaheuristic.GREEDY_DESCENT
-        case 'Guided Local Search':
-            lss = routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
-        case 'Simulated Annealing':
-            lss = routing_enums_pb2.LocalSearchMetaheuristic.SIMULATED_ANNEALING
-        case 'Tabu Search':
-            lss = routing_enums_pb2.LocalSearchMetaheuristic.TABU_SEARCH
-        case 'Generic Tabu Search':
-            lss = routing_enums_pb2.LocalSearchMetaheuristic.GENERIC_TABU_SEARCH
+    fss = get_fss(new_fss)
+    lss = get_lss(new_lss)
 
 
 
 def create_data_model():
+    global city
+    global carriers
     # Stores the data for the problem
     nodes = get_nodes(city)
     num_nodes = len(nodes.index)
@@ -119,6 +76,7 @@ def create_data_model():
     data['demands_liter'] = nodes['Demand[m^3*10^-3]'].values
     data['vehicle_payloads'] = [carriers['payloads'][i-1] for i in vehicles]
     data['vehicle_volumes'] = [carriers['volumes'][i-1] for i in vehicles]
+    data['ranges'] = [carriers['ranges'][i-1] for i in vehicles]
     data['num_vehicles'] = num_vehicles
     data['depot'] = 0
     return data
@@ -161,10 +119,11 @@ def print_solution(data, manager, routing, solution):
             route_distance_outside += data['distance_outside'][node_index][manager.IndexToNode(index)]
             route_time += data['time_routes'][node_index][manager.IndexToNode(index)] + data['time_nodes'][manager.IndexToNode(index)]
         route_string += f'[{manager.IndexToNode(index)}] ({route_payload/1000}kg; {route_volume/1000}m3)\n'
+        route_max_range = carriers['ranges'][vehicles[vehicle_id]-1]/1000
+        route_string += f'Distance: {route_distance/1000}/{route_max_range}km ({route_distance_inside/1000}km inside; {route_distance_outside/1000}km outside)\n'
         route_cpkm_in = carriers['cpkm_inside'][vehicles[vehicle_id]-1]/1000
         route_cpkm_out = carriers['cpkm_outside'][vehicles[vehicle_id]-1]/1000
         route_string += f'Cost: {route_cost/1000}€ ({route_cpkm_in}€/km inside and {route_cpkm_out}€/km outside)\n'
-        route_string += f'Distance: {route_distance/1000}km ({route_distance_inside/1000}km inside; {route_distance_outside/1000}km outside)\n'
         route_max_payload = carriers['payloads'][vehicles[vehicle_id]-1]/1000
         route_max_volume = carriers['volumes'][vehicles[vehicle_id]-1]/1000
         route_string += f'Load: {route_payload/1000}/{route_max_payload}kg and {route_volume/1000}/{route_max_volume}m3\n'
@@ -183,12 +142,8 @@ def print_solution(data, manager, routing, solution):
     total_time_string = f'Total time of all routes: {int_to_time(total_time)}'
     chosen_fleet_string = f'Chosen fleet: {count_occurrences(chosen_fleet)} ({len(chosen_fleet)} vehicles)'
     chosen_parameter_string = f'Solution for {city} with {toll_str}€/km tolls and fleet {count_occurrences(vehicles)}\nSearch parameters: FSS={fss_string}, LSS={lss_string}, t={timeout}s'
-    print(all_routes_string)
-    print(total_dist_string)
-    print(total_cost_string)
-    print(total_load_string)
-    print(chosen_fleet_string)
-    return all_routes_string, total_load_string, total_dist_string, total_time_string, total_cost_string, chosen_fleet_string, chosen_parameter_string
+    print(f'{all_routes_string}\n{total_dist_string}\n{total_cost_string}\n{total_load_string}\n{chosen_fleet_string}')
+    return all_routes_string, total_load_string, total_dist_string, total_time_string, total_cost_string, chosen_fleet_string, chosen_parameter_string, [total_cost/1000, f'{count_occurrences(chosen_fleet)}', total_payload/1000, total_volume/1000, total_distance/1000]
 
 
 
@@ -196,6 +151,11 @@ def main():
     # Solve the CVRP problem
     # Instantiate the data problem
     data = create_data_model()
+
+    # Check if provided vehicles have enough weight/volume to cover capacity in theory
+    impossible, out_string = check_infeasibility(data['vehicle_payloads'], data['vehicle_volumes'], data['demands_g'], data['demands_liter'])
+    if impossible:
+        return out_string
 
     # Create the routing index manager
     manager = pywrapcp.RoutingIndexManager(len(data['distance_total']),
@@ -209,9 +169,16 @@ def main():
         # Convert from routing variable Index to distance matrix NodeIndex
         from_node = manager.IndexToNode(from_index)
         to_node = manager.IndexToNode(to_index)
-        return data['distance_inside'][from_node][to_node]
+        return data['distance_total'][from_node][to_node]
 
-    routing.RegisterTransitCallback(distance_callback)
+    distance_callback_index = routing.RegisterTransitCallback(distance_callback)
+    routing.AddDimensionWithVehicleCapacity(
+        distance_callback_index,
+        0, # zero slack
+        data['ranges'], # maximum ranges
+        True, # start at zero
+        'Range'
+        )
 
     # Create and register a transit callback
     def cost_callback(vehicle_id):
@@ -297,22 +264,22 @@ def main():
     except Exception as e:
         print('Error occured: ', e)
         input('Press any key to exit.')
-    search_parameters.first_solution_strategy = (fss)
-    search_parameters.local_search_metaheuristic = (lss)
+    search_parameters.first_solution_strategy = fss
+    search_parameters.local_search_metaheuristic = lss
     search_parameters.time_limit.FromSeconds(timeout)
 
     # Solve the problem
     try:
         solution = routing.SolveWithParameters(search_parameters)
     except Exception as e:
-        return '', '', '', '', f'Error occurred while solving: {e}', '', f'{e}'
+        return '', '', '', '', f'Error occurred while solving: {e}', '', f'{e}', False
 
 
     # Print solution on console
     if solution:
         return print_solution(data, manager, routing, solution)
     else:
-        return 'No solution could be found!', '', 'Please check your chosen parameters for feasibility.', '', 'No solution could be found!', '', 'No solution could be found'
+        return 'No solution could be found!', '', 'Please check your chosen parameters for feasibility.', '', 'No solution could be found!', '', 'No solution could be found', False
 
 if __name__ == '__main__':
     main()
