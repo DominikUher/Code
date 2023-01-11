@@ -325,15 +325,15 @@ if __name__ == '__main__':
     routes, load, dist, time, cost, fleet, params, csv_list = main()
     print(write_to_csv(csv_list, city, int(toll/10), timeout, routes))
 
-    set_variables(np.repeat(np.arange(1, 8), 20), 'Shanghai', 100, 'Automatic FSS', 'Guided Local Search', 1800)
+    set_variables(np.repeat(np.arange(1, 8), 20), 'Shanghai', 50, 'Automatic FSS', 'Guided Local Search', 1800)
     routes, load, dist, time, cost, fleet, params, csv_list = main()
     print(write_to_csv(csv_list, city, int(toll/10), timeout, routes))
 
-    set_variables(np.repeat(np.arange(1, 8), 20), 'Shanghai', 250, 'Automatic FSS', 'Guided Local Search', 1800)
+    set_variables(np.repeat(np.arange(1, 8), 20), 'Shanghai', 125, 'Automatic FSS', 'Guided Local Search', 1800)
     routes, load, dist, time, cost, fleet, params, csv_list = main()
     print(write_to_csv(csv_list, city, int(toll/10), timeout, routes))
 
-    set_variables(np.repeat(np.arange(1, 8), 20), 'Shanghai', 400, 'Automatic FSS', 'Guided Local Search', 1800)
+    set_variables(np.repeat(np.arange(1, 8), 20), 'Shanghai', 200, 'Automatic FSS', 'Guided Local Search', 1800)
     routes, load, dist, time, cost, fleet, params, csv_list = main()
     print(write_to_csv(csv_list, city, int(toll/10), timeout, routes))
     
