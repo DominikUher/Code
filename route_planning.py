@@ -6,19 +6,20 @@ from ortools.constraint_solver import routing_parameters_pb2
 from ortools.constraint_solver import routing_enums_pb2
 from ortools.constraint_solver import pywrapcp
 import numpy as np
-from utils import get_nodes, get_routes, get_distance_matrix_from_routes, get_time_matrix_from_routes, get_time_list_from_nodes, count_occurrences, int_to_time, get_fss, get_lss, check_infeasibility
+import time as ti
+from utils import get_nodes, get_routes, get_distance_matrix_from_routes, get_time_matrix_from_routes, get_time_list_from_nodes, count_occurrences, int_to_time, get_fss, get_lss, check_infeasibility, write_to_csv
 
 # Global variables defaults - Values are adjusted from GUI through set_variables()
-vehicles = np.repeat(1, 38)
+vehicles = np.repeat(np.arange(1, 8), 20)
 num_vehicles = len(vehicles)
-city = 'Paris'
-city_int = 0
-toll = 0
+city = 'Shanghai'
+toll = 200
+timeout = 10800
 fss = routing_enums_pb2.FirstSolutionStrategy.AUTOMATIC
 fss_string = 'Automatic'
-lss = routing_enums_pb2.LocalSearchMetaheuristic.AUTOMATIC
+lss = routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
 lss_string = 'Automatic'
-timeout = 30
+city_int = 0 if city=='Paris' else 1 if city=='NewYork' else 2
 
 # Carrier characteristics
 carriers = {}
@@ -33,16 +34,7 @@ carriers['cpkm_inside'] = [c+toll if num<3 else c for num, c in enumerate(carrie
 
 
 def set_variables(new_vehicles, new_city, new_toll, new_fss, new_lss, new_time):
-    global vehicles
-    global city
-    global carriers
-    global num_vehicles
-    global fss
-    global fss_string
-    global lss
-    global lss_string
-    global timeout
-
+    global vehicles, num_vehicles, city, city_int, toll, carriers, timeout, fss_string, lss_string, fss, lss
     vehicles = new_vehicles
     num_vehicles = len(vehicles)
     city = new_city
@@ -59,15 +51,14 @@ def set_variables(new_vehicles, new_city, new_toll, new_fss, new_lss, new_time):
 
 
 def create_data_model():
-    global city
-    global carriers
     # Stores the data for the problem
     nodes = get_nodes(city)
     num_nodes = len(nodes.index)
     routes = get_routes(city)
-    num_routes = len(routes.index)
+    # num_routes = len(routes.index)
 
     data = {}
+    data['city'] = city
     data['distance_total'] = get_distance_matrix_from_routes(routes, num_nodes, 'Total')
     data['distance_inside'] = get_distance_matrix_from_routes(routes, num_nodes, 'Inside')
     data['distance_outside'] = get_distance_matrix_from_routes(routes, num_nodes, 'Outside')
@@ -75,20 +66,20 @@ def create_data_model():
     data['time_nodes'] = get_time_list_from_nodes(nodes)
     data['demands_g'] = [d*1000 for d in nodes['Demand[kg]'].values]
     data['demands_liter'] = nodes['Demand[m^3*10^-3]'].values
+    data['vehicles'] = vehicles
     data['vehicle_payloads'] = [carriers['payloads'][i-1] for i in vehicles]
     data['vehicle_volumes'] = [carriers['volumes'][i-1] for i in vehicles]
     data['ranges'] = [carriers['ranges'][i-1] for i in vehicles]
     data['num_vehicles'] = num_vehicles
     data['depot'] = 0
+    data['fss'] = fss
+    data['lss'] = lss
     return data
 
 
 
 def print_solution(data, manager, routing, solution):
     # Prints solution on console/GUI
-    global fss
-    global lss
-    global timeout
     toll_str = '{:.2f}'.format(toll/1000)
     all_routes_string = ''
     total_cost = 0
@@ -97,6 +88,7 @@ def print_solution(data, manager, routing, solution):
     total_payload = 0
     total_volume = 0
     chosen_fleet = []
+
     for vehicle_id in range(data['num_vehicles']):
         index = routing.Start(vehicle_id)
         route_string = f'Route for vehicle {len(chosen_fleet)+1} (Type {vehicles[vehicle_id]}):\n'
@@ -107,6 +99,7 @@ def print_solution(data, manager, routing, solution):
         route_time = 0
         route_payload = 0
         route_volume = 0
+
         while not routing.IsEnd(index):
             node_index = manager.IndexToNode(index)
             route_payload += data['demands_g'][node_index]
@@ -119,6 +112,7 @@ def print_solution(data, manager, routing, solution):
             route_distance_inside += data['distance_inside'][node_index][manager.IndexToNode(index)]
             route_distance_outside += data['distance_outside'][node_index][manager.IndexToNode(index)]
             route_time += data['time_routes'][node_index][manager.IndexToNode(index)] + data['time_nodes'][manager.IndexToNode(index)]
+
         route_string += f'[{manager.IndexToNode(index)}] ({route_payload/1000}kg; {route_volume/1000}m3)\n'
         route_max_range = carriers['ranges'][vehicles[vehicle_id]-1]/1000
         route_string += f'Distance: {route_distance/1000}/{route_max_range}km ({route_distance_inside/1000}km inside; {route_distance_outside/1000}km outside)\n'
@@ -129,6 +123,7 @@ def print_solution(data, manager, routing, solution):
         route_max_volume = carriers['volumes'][vehicles[vehicle_id]-1]/1000
         route_string += f'Load: {route_payload/1000}/{route_max_payload}kg and {route_volume/1000}/{route_max_volume}m3\n'
         route_string += f'Time: {int_to_time(route_time)}\n'
+
         if route_cost > 0:
             total_distance += route_distance
             total_time += route_time
@@ -137,6 +132,7 @@ def print_solution(data, manager, routing, solution):
             total_volume += route_volume
             chosen_fleet.append(vehicles[vehicle_id])
             all_routes_string += route_string+'\n'
+
     total_load_string = f'Total load of all routes: {total_payload/1000}kg and {total_volume/1000}m3'
     total_cost_string = f'Total cost of all routes: {total_cost/1000}€'
     total_dist_string = f'Total distance of all routes: {total_distance/1000}km'
@@ -144,6 +140,7 @@ def print_solution(data, manager, routing, solution):
     chosen_fleet_string = f'Chosen fleet: {count_occurrences(chosen_fleet)} ({len(chosen_fleet)} vehicles)'
     chosen_parameter_string = f'Solution for {city} with {toll_str}€/km tolls and fleet {count_occurrences(vehicles)}\nSearch parameters: FSS={fss_string}, LSS={lss_string}, t={timeout}s'
     print(f'{all_routes_string}\n{total_dist_string}\n{total_cost_string}\n{total_load_string}\n{chosen_fleet_string}')
+
     return all_routes_string, total_load_string, total_dist_string, total_time_string, total_cost_string, chosen_fleet_string, chosen_parameter_string, [total_cost/1000, f'{count_occurrences(chosen_fleet)}', total_payload/1000, total_volume/1000, total_distance/1000]
 
 
@@ -257,9 +254,6 @@ def main():
     )
 
     # Setting first solution heuristic
-    global fss
-    global lss
-    global timeout
     try:
         search_parameters = pywrapcp.DefaultRoutingSearchParameters()
     except Exception as e:
@@ -271,6 +265,9 @@ def main():
 
     # Solve the problem
     try:
+        busy_end = ti.strftime('%X', ti.localtime(ti.time()+timeout))
+        print(f'\nSearching {city} with fleet {count_occurrences(vehicles)}')
+        print(f'ending by latest: {busy_end}')
         solution = routing.SolveWithParameters(search_parameters)
     except Exception as e:
         return '', '', '', '', f'Error occurred while solving: {e}', '', f'{e}', False
@@ -283,4 +280,63 @@ def main():
         return 'No solution could be found!', '', 'Please check your chosen parameters for feasibility.', '', 'No solution could be found!', '', 'No solution could be found', False
 
 if __name__ == '__main__':
-    main()
+    
+    set_variables(np.repeat(np.arange(1, 8), 20), 'Paris', 0, 'Automatic FSS', 'Guided Local Search', 1800)
+    routes, load, dist, time, cost, fleet, params, csv_list = main()
+    print(write_to_csv(csv_list, city, int(toll/10), timeout, routes))
+
+    set_variables(np.repeat(np.arange(1, 8), 20), 'Paris', 100, 'Automatic FSS', 'Guided Local Search', 1800)
+    routes, load, dist, time, cost, fleet, params, csv_list = main()
+    print(write_to_csv(csv_list, city, int(toll/10), timeout, routes))
+
+    set_variables(np.repeat(np.arange(1, 8), 20), 'Paris', 250, 'Automatic FSS', 'Guided Local Search', 1800)
+    routes, load, dist, time, cost, fleet, params, csv_list = main()
+    print(write_to_csv(csv_list, city, int(toll/10), timeout, routes))
+
+    set_variables(np.repeat(np.arange(1, 8), 20), 'Paris', 400, 'Automatic FSS', 'Guided Local Search', 1800)
+    routes, load, dist, time, cost, fleet, params, csv_list = main()
+    print(write_to_csv(csv_list, city, int(toll/10), timeout, routes))
+    
+    set_variables(np.repeat(np.arange(1, 8), 20), 'Paris', 1000000, 'Automatic FSS', 'Guided Local Search', 1800)
+    routes, load, dist, time, cost, fleet, params, csv_list = main()
+    print(write_to_csv(csv_list, city, int(toll/10), timeout, routes))
+    
+    set_variables(np.repeat(np.arange(1, 8), 20), 'NewYork', 0, 'Automatic FSS', 'Guided Local Search', 1800)
+    routes, load, dist, time, cost, fleet, params, csv_list = main()
+    print(write_to_csv(csv_list, city, int(toll/10), timeout, routes))
+
+    set_variables(np.repeat(np.arange(1, 8), 20), 'NewYork', 100, 'Automatic FSS', 'Guided Local Search', 1800)
+    routes, load, dist, time, cost, fleet, params, csv_list = main()
+    print(write_to_csv(csv_list, city, int(toll/10), timeout, routes))
+
+    set_variables(np.repeat(np.arange(1, 8), 20), 'NewYork', 250, 'Automatic FSS', 'Guided Local Search', 1800)
+    routes, load, dist, time, cost, fleet, params, csv_list = main()
+    print(write_to_csv(csv_list, city, int(toll/10), timeout, routes))
+
+    set_variables(np.repeat(np.arange(1, 8), 20), 'NewYork', 400, 'Automatic FSS', 'Guided Local Search', 1800)
+    routes, load, dist, time, cost, fleet, params, csv_list = main()
+    print(write_to_csv(csv_list, city, int(toll/10), timeout, routes))
+    
+    set_variables(np.repeat(np.arange(1, 8), 20), 'NewYork', 1000000, 'Automatic FSS', 'Guided Local Search', 1800)
+    routes, load, dist, time, cost, fleet, params, csv_list = main()
+    print(write_to_csv(csv_list, city, int(toll/10), timeout, routes))
+    
+    set_variables(np.repeat(np.arange(1, 8), 20), 'Shanghai', 0, 'Automatic FSS', 'Guided Local Search', 1800)
+    routes, load, dist, time, cost, fleet, params, csv_list = main()
+    print(write_to_csv(csv_list, city, int(toll/10), timeout, routes))
+
+    set_variables(np.repeat(np.arange(1, 8), 20), 'Shanghai', 100, 'Automatic FSS', 'Guided Local Search', 1800)
+    routes, load, dist, time, cost, fleet, params, csv_list = main()
+    print(write_to_csv(csv_list, city, int(toll/10), timeout, routes))
+
+    set_variables(np.repeat(np.arange(1, 8), 20), 'Shanghai', 250, 'Automatic FSS', 'Guided Local Search', 1800)
+    routes, load, dist, time, cost, fleet, params, csv_list = main()
+    print(write_to_csv(csv_list, city, int(toll/10), timeout, routes))
+
+    set_variables(np.repeat(np.arange(1, 8), 20), 'Shanghai', 400, 'Automatic FSS', 'Guided Local Search', 1800)
+    routes, load, dist, time, cost, fleet, params, csv_list = main()
+    print(write_to_csv(csv_list, city, int(toll/10), timeout, routes))
+    
+    set_variables(np.repeat(np.arange(1, 8), 20), 'Shanghai', 1000000, 'Automatic FSS', 'Guided Local Search', 1800)
+    routes, load, dist, time, cost, fleet, params, csv_list = main()
+    print(write_to_csv(csv_list, city, int(toll/10), timeout, routes))
