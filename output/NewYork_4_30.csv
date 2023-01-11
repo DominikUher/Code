@@ -1,0 +1,2 @@
+City;Toll [ct];Max_Time [s];Actual_Time [s];Total_Cost [€];Fleet;Total_Weight [kg];Total_Volume [m3];Total_Distance [km]
+NewYork;4;30;3.509;3409.453;{1: 6, 2: 18};25995.0;265.894;1095.819

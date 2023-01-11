@@ -117,13 +117,15 @@ def gui():
             end_time = ti.time()
             texts[0] += f'{cost}\n{dist}\n{load}\n{time}\n{fleet}\n\n' if load else f'{cost}\n{dist}\n\n'
             texts[1] += routes+'\n\n____________________________________________________________\n\n\n\n\n' if load else 'No solution could be found\n____________________________________________________________\n\n'
-            texts[2] += f'{params}\nSearch completed in {round(end_time-start_time, 3)}s\n\n'
+            texts[2] += f'{params}\nSearch completed in {round(end_time-start_time, 3)}s\n'
         else:
             texts[0] += 'Infeasible parameter set detected!\nPlease check your chosen parameters\n\n'
             texts[1] += 'No solution possible\n____________________________________________________________\n\n'
-            texts[2] += f'Search parameters: FSS={new_fss}, LSS={new_lss}, t={new_time}s\nNo solution possible\n\n'
+            texts[2] += f'Search parameters: FSS={new_fss}, LSS={new_lss}, t={new_time}s\nNo solution possible\n'
+        update_display()
         if csv_list:
-            write_to_csv(csv_list, new_city, int(new_toll*100), new_time, round(end_time-start_time, 3))
+            texts[2] += write_to_csv(csv_list, new_city, int(new_toll*100), new_time, round(end_time-start_time, 3))
+        texts[2] += '\n'
         busy = False
         update_display()
     

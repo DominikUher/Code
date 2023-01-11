@@ -1,0 +1,2 @@
+City;Toll [ct];Max_Time [s];Actual_Time [s];Total_Cost [€];Fleet;Total_Weight [kg];Total_Volume [m3];Total_Distance [km]
+Paris;4;30;0.812;1597.349;{1: 20};50938.0;509.492;663.717

@@ -94,8 +94,13 @@ def write_to_csv(csv, city, toll, timeout, time):
             'Total_Volume [m3]': [csv[3]],
             'Total_Distance [km]': [csv[4]],
         }
-    df = pd.DataFrame(data_out)
-    df.to_csv(f'./output/{city}_{toll}_{timeout}.csv', index=False, sep=';')
+    try:
+        df = pd.DataFrame(data_out)
+        df.to_csv(f'output/{city}_{toll}_{timeout}.csv', index=False, sep=';')
+    except Exception as e:
+        return f'Error: {e}\n'
+    return 'Output written to CSV file\n'
+
 
 def check_infeasibility(vehicle_weights, vehicle_volumes, demand_weights, demand_volumes):
     available_weight = np.sum(vehicle_weights)

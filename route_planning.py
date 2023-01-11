@@ -2,6 +2,7 @@
 """ Please find the original code here: https://developers.google.com/optimization/routing/cvrp#entire_program """
 """ Distances [m], weight [g], volume [l], and cost [0.1ct] to keep precision reasonably high, as the solver only accepts integer values """
 
+from ortools.constraint_solver import routing_parameters_pb2
 from ortools.constraint_solver import routing_enums_pb2
 from ortools.constraint_solver import pywrapcp
 import numpy as np
