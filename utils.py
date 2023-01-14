@@ -4,6 +4,7 @@ import math
 from collections import defaultdict
 from ortools.constraint_solver import routing_enums_pb2
 
+
 # Function to compute a euclidean distrance matrix from lat/lon
 def compute_euclidean_distance_matrix(locations):
     distances = {}
@@ -19,6 +20,7 @@ def compute_euclidean_distance_matrix(locations):
                                (from_node[1] - to_node[1]))))
     return distances
 
+
 # Function to display a long list of vehicles in a short dict of types and occurence
 # [1, 1, 2, 2, 2, 3, 3, 3, 3, 7] -> {1: 2, 2: 3, 3: 4, 7: 1}
 def count_occurrences(list):
@@ -26,6 +28,7 @@ def count_occurrences(list):
     for item in list:
         d[item] += 1
     return dict(d)
+
 
 # Function to generate list of vehicles from list of vehicle types
 # [2, 3, 4, 0, 0, 0, 1] -> [1, 1, 2, 2, 2, 3, 3, 3, 3, 7]
@@ -36,12 +39,16 @@ def generate_vehicles(list):
             out_list.append(id+1)
     return out_list
 
+
+# Function to convert from time (XX:XX:XX) to int time in seconds
 def time_to_int(time):
     hours = int(time[0:2])
     minutes = int(time[3:5])
     seconds = int(time[6:8])
     return (hours*3600 + minutes*60 + seconds)
 
+
+# Function to convert from integer seconds to time (XX:XX:XX)
 def int_to_time(seconds):
     hours = math.floor(seconds/3600)
     hours_str = hours if hours>9 else f'0{hours}'
@@ -52,12 +59,18 @@ def int_to_time(seconds):
     seconds_str = seconds if seconds>9 else f'0{seconds}'
     return f'{hours_str}:{minutes_str}:{seconds_str}'
 
+
+# Function to read in node information regarding a city from /instances/ .nodes file
 def get_nodes(city):
     return pd.read_csv(f'./instances/{city}.nodes', sep=' ')
 
+
+# Function to read in route information reagrding a city from /instances/ .routes file
 def get_routes(city):
     return pd.read_csv(f'./instances/{city}.routes', sep=' ')
 
+
+# Function to calculate a distance matrix from .routes format data
 def get_distance_matrix_from_routes(routes, num_nodes, dist_type):
     # Returns distance matrix computed from custom .routes format
     valid = ['Total', 'Inside', 'Outside']
@@ -69,6 +82,8 @@ def get_distance_matrix_from_routes(routes, num_nodes, dist_type):
     m_matrix = list(zip(*([iter(m_list)]*num_nodes)))
     return m_matrix
 
+
+# Function to get a time matrix from .routes format data
 def get_time_matrix_from_routes(routes, num_nodes):
     # Returns distance matrix computed from custom .routes format
     time_list = routes['Duration[s]']
@@ -76,12 +91,16 @@ def get_time_matrix_from_routes(routes, num_nodes):
     s_matrix = list(zip(*([iter(s_list)]*num_nodes)))
     return s_matrix
 
+
+# Function to get processing times for each node
 def get_time_list_from_nodes(nodes):
     # Returns list of times taken for serving each node in nodes
     time_list = nodes['Duration']
     s_list = [time_to_int(x) for x in time_list]
     return s_list
 
+
+# Function to write output data from routing to CSV file
 def write_to_csv(csv, city, toll, timeout, time):
     data_out = {
             'City': [city],
@@ -102,6 +121,7 @@ def write_to_csv(csv, city, toll, timeout, time):
     return 'Output written to CSV file\n'
 
 
+# Function to perform sanity check on user-defined parameters to avoid running impossible searches
 def check_infeasibility(vehicle_weights, vehicle_volumes, demand_weights, demand_volumes):
     available_weight = np.sum(vehicle_weights)
     available_volume = np.sum(vehicle_volumes)
@@ -114,6 +134,8 @@ def check_infeasibility(vehicle_weights, vehicle_volumes, demand_weights, demand
     else:
         return False, ''
 
+
+# Function to get correct index for solver from strategy name
 def get_fss(new_fss):
     match new_fss:
         case 'Automatic FSS':
@@ -146,6 +168,8 @@ def get_fss(new_fss):
             fss = routing_enums_pb2.FirstSolutionStrategy.FIRST_UNBOUND_MIN_VALUE
     return fss
 
+
+# Function to get correct index for solver from strategy name
 def get_lss(new_lss):    
     match new_lss:
         case 'Automatic LSS':

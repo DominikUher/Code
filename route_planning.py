@@ -1,7 +1,6 @@
 """ This code is based on and adapted from the OR-Tools example for Capacited Vehicles Routing Problem (CVRP) """
 """ Please find the original code here: https://developers.google.com/optimization/routing/cvrp#entire_program """
 """ Distances [m], weight [g], volume [l], and cost [0.1ct] to keep precision reasonably high, as the solver only accepts integer values """
-
 from ortools.constraint_solver import routing_parameters_pb2
 from ortools.constraint_solver import routing_enums_pb2
 from ortools.constraint_solver import pywrapcp
@@ -33,6 +32,7 @@ carriers['cpkm_inside'] = [c+toll if num<3 else c for num, c in enumerate(carrie
 
 
 
+# Set search parameters from outside
 def set_variables(new_vehicles, new_city, new_toll, new_fss, new_lss, new_time):
     global vehicles, num_vehicles, city, city_int, toll, carriers, timeout, fss_string, lss_string, fss, lss
     vehicles = new_vehicles
@@ -50,12 +50,11 @@ def set_variables(new_vehicles, new_city, new_toll, new_fss, new_lss, new_time):
 
 
 
+# Create data model for problem
 def create_data_model():
-    # Stores the data for the problem
     nodes = get_nodes(city)
     num_nodes = len(nodes.index)
     routes = get_routes(city)
-    # num_routes = len(routes.index)
 
     data = {}
     data['city'] = city
@@ -78,8 +77,8 @@ def create_data_model():
 
 
 
+# Prints solution on console/GUI
 def print_solution(data, manager, routing, solution):
-    # Prints solution on console/GUI
     toll_str = '{:.2f}'.format(toll/1000)
     all_routes_string = ''
     total_cost = 0
@@ -89,7 +88,7 @@ def print_solution(data, manager, routing, solution):
     total_volume = 0
     chosen_fleet = []
 
-    for vehicle_id in range(data['num_vehicles']):
+    for vehicle_id in range(data['num_vehicles']): # For each vehicle
         index = routing.Start(vehicle_id)
         route_string = f'Route for vehicle {len(chosen_fleet)+1} (Type {vehicles[vehicle_id]}):\n'
         route_cost = 0
@@ -100,7 +99,7 @@ def print_solution(data, manager, routing, solution):
         route_payload = 0
         route_volume = 0
 
-        while not routing.IsEnd(index):
+        while not routing.IsEnd(index): # For each node in vehicle's route
             node_index = manager.IndexToNode(index)
             route_payload += data['demands_g'][node_index]
             route_volume += data['demands_liter'][node_index]
@@ -124,7 +123,7 @@ def print_solution(data, manager, routing, solution):
         route_string += f'Load: {route_payload/1000}/{route_max_payload}kg and {route_volume/1000}/{route_max_volume}m3\n'
         route_string += f'Time: {int_to_time(route_time)}\n'
 
-        if route_cost > 0:
+        if route_cost > 0: # Only print routes that are not empty
             total_distance += route_distance
             total_time += route_time
             total_cost += route_cost
@@ -145,12 +144,12 @@ def print_solution(data, manager, routing, solution):
 
 
 
+# Solve the CVRP problem
 def main():
-    # Solve the CVRP problem
     # Instantiate the data problem
     data = create_data_model()
 
-    # Check if provided vehicles have enough weight/volume to cover capacity in theory
+    # Check if provided vehicles have enough weight/volume to cover capacity (in theory)
     impossible, out_string = check_infeasibility(data['vehicle_payloads'], data['vehicle_volumes'], data['demands_g'], data['demands_liter'])
     if impossible:
         return out_string
@@ -170,13 +169,7 @@ def main():
         return data['distance_total'][from_node][to_node]
 
     distance_callback_index = routing.RegisterTransitCallback(distance_callback)
-    routing.AddDimensionWithVehicleCapacity(
-        distance_callback_index,
-        0, # zero slack
-        data['ranges'], # maximum ranges
-        True, # start at zero
-        'Range'
-        )
+    routing.AddDimensionWithVehicleCapacity(distance_callback_index, 0, data['ranges'], True, 'Range')
 
     # Create and register a transit callback
     def cost_callback(vehicle_id):
@@ -195,15 +188,9 @@ def main():
         routing.SetArcCostEvaluatorOfVehicle(cost_callbacks[-1], vehicle_id)
 
     # Add Cost constraints
-    routing.AddDimensionWithVehicleTransits(
-        cost_callbacks,
-        0,
-        1000000,
-        True,
-        'Cost'
-        )
+    routing.AddDimensionWithVehicleTransits(cost_callbacks, 0, 1000000, True, 'Cost')
     cost_dimension = routing.GetDimensionOrDie('Cost')
-    cost_dimension.SetGlobalSpanCostCoefficient(0)
+    cost_dimension.SetGlobalSpanCostCoefficient(0) # Sets Global Span Coefficient to Zero - GSC would add costs for difference between longest and shortest route -> Forcing routes of similar length
 
     # Add Capacity (Weight) constraint
     def payload_callback(from_index):
@@ -213,12 +200,7 @@ def main():
         return data['demands_g'][from_node]
 
     payload_callback_index = routing.RegisterUnaryTransitCallback(payload_callback)
-    routing.AddDimensionWithVehicleCapacity(
-        payload_callback_index,
-        0,  # null capacity slack
-        data['vehicle_payloads'],  # vehicle maximum capacities
-        True,  # start cumul to zero
-        'Payload')
+    routing.AddDimensionWithVehicleCapacity(payload_callback_index, 0,  data['vehicle_payloads'], True, 'Payload')
 
     # Add Capacity (Volume) constraint.
     def volume_callback(from_index):
@@ -228,13 +210,7 @@ def main():
         return data['demands_liter'][from_node]
 
     volume_callback_index = routing.RegisterUnaryTransitCallback(volume_callback)
-    routing.AddDimensionWithVehicleCapacity(
-        volume_callback_index,
-        0,
-        data['vehicle_volumes'],
-        True,
-        'Volume'
-    )
+    routing.AddDimensionWithVehicleCapacity(volume_callback_index, 0, data['vehicle_volumes'], True, 'Volume')
 
     # Add Time dimension.
     def time_callback(from_index, to_index):
@@ -245,20 +221,15 @@ def main():
         return data['time_routes'][from_node][to_node] + data['time_nodes'][to_node]
 
     time_callback_index = routing.RegisterTransitCallback(time_callback)
-    routing.AddDimension(
-        time_callback_index,
-        0, # zero slack
-        28800, # maximum 8h
-        True, # starts at zero
-        'Time'
-    )
+    routing.AddDimension(time_callback_index, 0, 28800, True, 'Time') # 28800s = 8h is maximum time allowed for a route 
 
-    # Setting first solution heuristic
+    # Setting solver parameters
     try:
         search_parameters = pywrapcp.DefaultRoutingSearchParameters()
     except Exception as e:
         print('Error occured: ', e)
         input('Press any key to exit.')
+        return '', '', '', '', f'Error occurred while solving: {e}', '', f'{e}', False
     search_parameters.first_solution_strategy = fss
     search_parameters.local_search_metaheuristic = lss
     search_parameters.time_limit.FromSeconds(timeout)
@@ -279,64 +250,19 @@ def main():
     else:
         return 'No solution could be found!', '', 'Please check your chosen parameters for feasibility.', '', 'No solution could be found!', '', 'No solution could be found', False
 
+
+
 if __name__ == '__main__':
+    # Only relevant if route_planning.py is executed as the main program, i.e. in testing (never from GUI)
+    def manual_routing(new_fleet, new_city, new_toll, new_fss, new_lss, new_timeout):
+        set_variables(new_fleet, new_city, new_toll, new_fss, new_lss, new_timeout)
+        routes, load, dist, time, cost, fleet, params, csv_list = main()
+        if csv_list:
+            print(write_to_csv(csv_list, city, int(toll/10), timeout, routes))
     
-    set_variables(np.repeat(np.arange(1, 8), 20), 'Paris', 0, 'Automatic FSS', 'Guided Local Search', 1800)
-    routes, load, dist, time, cost, fleet, params, csv_list = main()
-    print(write_to_csv(csv_list, city, int(toll/10), timeout, routes))
-
-    set_variables(np.repeat(np.arange(1, 8), 20), 'Paris', 100, 'Automatic FSS', 'Guided Local Search', 1800)
-    routes, load, dist, time, cost, fleet, params, csv_list = main()
-    print(write_to_csv(csv_list, city, int(toll/10), timeout, routes))
-
-    set_variables(np.repeat(np.arange(1, 8), 20), 'Paris', 250, 'Automatic FSS', 'Guided Local Search', 1800)
-    routes, load, dist, time, cost, fleet, params, csv_list = main()
-    print(write_to_csv(csv_list, city, int(toll/10), timeout, routes))
-
-    set_variables(np.repeat(np.arange(1, 8), 20), 'Paris', 400, 'Automatic FSS', 'Guided Local Search', 1800)
-    routes, load, dist, time, cost, fleet, params, csv_list = main()
-    print(write_to_csv(csv_list, city, int(toll/10), timeout, routes))
-    
-    set_variables(np.repeat(np.arange(1, 8), 20), 'Paris', 1000000, 'Automatic FSS', 'Guided Local Search', 1800)
-    routes, load, dist, time, cost, fleet, params, csv_list = main()
-    print(write_to_csv(csv_list, city, int(toll/10), timeout, routes))
-    
-    set_variables(np.repeat(np.arange(1, 8), 20), 'NewYork', 0, 'Automatic FSS', 'Guided Local Search', 1800)
-    routes, load, dist, time, cost, fleet, params, csv_list = main()
-    print(write_to_csv(csv_list, city, int(toll/10), timeout, routes))
-
-    set_variables(np.repeat(np.arange(1, 8), 20), 'NewYork', 100, 'Automatic FSS', 'Guided Local Search', 1800)
-    routes, load, dist, time, cost, fleet, params, csv_list = main()
-    print(write_to_csv(csv_list, city, int(toll/10), timeout, routes))
-
-    set_variables(np.repeat(np.arange(1, 8), 20), 'NewYork', 250, 'Automatic FSS', 'Guided Local Search', 1800)
-    routes, load, dist, time, cost, fleet, params, csv_list = main()
-    print(write_to_csv(csv_list, city, int(toll/10), timeout, routes))
-
-    set_variables(np.repeat(np.arange(1, 8), 20), 'NewYork', 400, 'Automatic FSS', 'Guided Local Search', 1800)
-    routes, load, dist, time, cost, fleet, params, csv_list = main()
-    print(write_to_csv(csv_list, city, int(toll/10), timeout, routes))
-    
-    set_variables(np.repeat(np.arange(1, 8), 20), 'NewYork', 1000000, 'Automatic FSS', 'Guided Local Search', 1800)
-    routes, load, dist, time, cost, fleet, params, csv_list = main()
-    print(write_to_csv(csv_list, city, int(toll/10), timeout, routes))
-    
-    set_variables(np.repeat(np.arange(1, 8), 20), 'Shanghai', 0, 'Automatic FSS', 'Guided Local Search', 1800)
-    routes, load, dist, time, cost, fleet, params, csv_list = main()
-    print(write_to_csv(csv_list, city, int(toll/10), timeout, routes))
-
-    set_variables(np.repeat(np.arange(1, 8), 20), 'Shanghai', 50, 'Automatic FSS', 'Guided Local Search', 1800)
-    routes, load, dist, time, cost, fleet, params, csv_list = main()
-    print(write_to_csv(csv_list, city, int(toll/10), timeout, routes))
-
-    set_variables(np.repeat(np.arange(1, 8), 20), 'Shanghai', 125, 'Automatic FSS', 'Guided Local Search', 1800)
-    routes, load, dist, time, cost, fleet, params, csv_list = main()
-    print(write_to_csv(csv_list, city, int(toll/10), timeout, routes))
-
-    set_variables(np.repeat(np.arange(1, 8), 20), 'Shanghai', 200, 'Automatic FSS', 'Guided Local Search', 1800)
-    routes, load, dist, time, cost, fleet, params, csv_list = main()
-    print(write_to_csv(csv_list, city, int(toll/10), timeout, routes))
-    
-    set_variables(np.repeat(np.arange(1, 8), 20), 'Shanghai', 1000000, 'Automatic FSS', 'Guided Local Search', 1800)
-    routes, load, dist, time, cost, fleet, params, csv_list = main()
-    print(write_to_csv(csv_list, city, int(toll/10), timeout, routes))
+    manual_routing(np.repeat(np.arange(1, 8), 30), 'NewYork', 1000000, 'Automatic FSS', 'Guided Local Search', 1800)
+    manual_routing(np.repeat(np.arange(1, 8), 20), 'Shanghai', 0, 'Automatic FSS', 'Guided Local Search', 1800)
+    manual_routing(np.repeat(np.arange(1, 8), 20), 'Shanghai', 50, 'Automatic FSS', 'Guided Local Search', 1800)
+    manual_routing(np.repeat(np.arange(1, 8), 20), 'Shanghai', 125, 'Automatic FSS', 'Guided Local Search', 1800)
+    manual_routing(np.repeat(np.arange(1, 8), 20), 'Shanghai', 200, 'Automatic FSS', 'Guided Local Search', 1800)
+    manual_routing(np.repeat(np.arange(1, 8), 20), 'Shanghai', 1000000, 'Automatic FSS', 'Guided Local Search', 1800)

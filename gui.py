@@ -2,7 +2,6 @@
 """ https://realpython.com/python-gui-tkinter/#building-a-text-editor-example-app """
 """ https://zetcode.com/tkinter/ """
 """ https://www.geeksforgeeks.org/radiobutton-in-tkinter-python/ """
-
 import time as ti
 import numpy as np
 import tkinter as tk
@@ -12,6 +11,7 @@ from functools import partial
 from utils import count_occurrences, generate_vehicles, write_to_csv
 from route_planning import set_variables, main
 
+# Global variables
 display = 'Welcome to ETS\'s new routing software!\n\nSelect the relevant city, toll, and fleet in the left sidebar.\nChoose your preferred first solution strategy (FSS), local search strategy (LSS), and time limit [sec] via the blue option menus.\nGenerate routes with the green button in the top left!\n\nAll vehicles are assumed to be available for routes twice per day, which is why the solution may use up to double the vehicles chosen.'
 texts = ['', '', '']
 new_vehicles = []
@@ -22,6 +22,7 @@ busy = False
 busy_end = 0
 
 
+# Main function to create/run GUI
 def gui():
     # Function to increase discrete values for fleet selection
     def int_increase(id):
@@ -175,7 +176,6 @@ def gui():
 
     radio = tk.IntVar(window, 1)
     values = {'Paris' : 1, 'New York' : 2, 'Shanghai' : 3}
-
     for (text, value) in values.items():
         button = tk.Radiobutton(left_pane, text=text, variable=radio, value=value)
         button.grid(row=value, column=0, sticky='w')
@@ -205,7 +205,6 @@ def gui():
 
     radio2 = tk.IntVar(window, 1)
     values2 = {'Existing' : 1, 'New (equal)' : 2, 'New (custom)' : 3}
-
     for (text, value) in values2.items():
         button = tk.Radiobutton(left_pane, text=text, variable=radio2, value=value, command=show_fleet_buttons)
         button.grid(row=value+8, column=0, sticky='w')
@@ -215,23 +214,20 @@ def gui():
     fleet_mins = []
     fleet_labels = []
     fleet_plus = []
-
     for id, num in enumerate(fleet_nums):
         fleet_mins.append(tk.Button(master=button_subpane2, text=' - ', command=partial(int_decrease, id), repeatdelay=250, repeatinterval=50))
         fleet_labels.append(tk.Label(master=button_subpane2, text=f' {num} of each ' if id==0 else f'Type {id}: {num}'))
         fleet_plus.append(tk.Button(master=button_subpane2, text=' + ', command=partial(int_increase, id), repeatdelay=250, repeatinterval=50))
-
     button_subpane2.grid(row=12, column=0, sticky='ns', padx=2, pady=5)
 
 
     # Content on top menubar
     radio_top = tk.IntVar(top_pane, 0)
     values_top = {'Summary' : 0, 'Routes' : 1, 'Console' : 2}
-
     for (text, value) in values_top.items():
         button = tk.Radiobutton(top_pane, text=text, variable=radio_top, value=value, indicator=0, background='light gray', command=update_display)
         button.grid(row=0, column=value, sticky='nsew')
-
+        
     label_busy = tk.Label(master=top_pane, text=f'Busy (done by <={busy_end}', fg='red')
 
 
