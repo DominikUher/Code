@@ -101,7 +101,7 @@ def get_time_list_from_nodes(nodes):
 
 
 # Function to write output data from routing to CSV file
-def write_to_csv(csv, city, toll, timeout, time):
+def write_to_csv(csv, city, toll, timeout, time, routes):
     data_out = {
             'City': [city],
             'Toll [ct]': [toll],
@@ -112,6 +112,7 @@ def write_to_csv(csv, city, toll, timeout, time):
             'Total_Weight [kg]': [csv[2]],
             'Total_Volume [m3]': [csv[3]],
             'Total_Distance [km]': [csv[4]],
+            'Routes': routes
         }
     try:
         df = pd.DataFrame(data_out)

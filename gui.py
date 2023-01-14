@@ -125,7 +125,7 @@ def gui():
             texts[2] += f'Search parameters: FSS={new_fss}, LSS={new_lss}, t={new_time}s\nNo solution possible\n'
         update_display()
         if csv_list:
-            texts[2] += write_to_csv(csv_list, new_city, int(new_toll*100), new_time, round(end_time-start_time, 3))
+            texts[2] += write_to_csv(csv_list, new_city, int(new_toll*100), new_time, round(end_time-start_time, 3), routes)
         texts[2] += '\n'
         busy = False
         update_display()
