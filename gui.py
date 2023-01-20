@@ -39,14 +39,22 @@ def gui():
     # Function to increase float values for toll
     def float_increase():
         global new_toll
-        new_toll = min(new_toll+0.01, 1)
-        label_value['text'] = ' {:.2f}€/km '.format(new_toll)
+        if new_toll < 1:
+            new_toll = min(new_toll+0.01, 1)
+            label_value['text'] = ' {:.2f}€/km '.format(new_toll)
+        else:
+            new_toll = 1000
+            label_value['text'] = ' 1000€/km '
     
     # Function to decrease float values for toll
     def float_decrease():
         global new_toll
-        new_toll = max(new_toll-0.01, 0)
-        label_value['text'] = ' {:.2f}€/km '.format(new_toll)
+        if new_toll <= 1:
+            new_toll = max(new_toll-0.01, 0)
+            label_value['text'] = ' {:.2f}€/km '.format(new_toll)
+        else:
+            new_toll = 1
+            label_value['text'] = ' {:.2f}€/km '.format(new_toll)
 
     # Function to update displayed text based on tab selection
     def update_display():
@@ -157,7 +165,7 @@ def gui():
     lss_var.set('Automatic LSS')
     lss_menu = tk.OptionMenu(window, lss_var, *lss_options)
     lss_menu.config(bg='light sea green', activebackground='medium turquoise')
-    time_options = [1, 2, 5, 10, 30, 60, 120, 300, 600]
+    time_options = [1, 5, 10, 30, 60, 300, 600, 1800, 3600]
     time_var = tk.IntVar()
     time_var.set(30)
     time_menu = tk.OptionMenu(window, time_var, *time_options)
@@ -188,11 +196,11 @@ def gui():
     label_title.grid(row=5, column=0, sticky='w', pady=3)
 
     button_subpane = tk.Frame(left_pane)
-    button_minus = tk.Button(master=button_subpane, text=' - ', command=float_decrease, repeatdelay=250, repeatinterval=50)
+    button_minus = tk.Button(master=button_subpane, text=' - ', command=float_decrease, repeatdelay=250, repeatinterval=25)
     button_minus.grid(row=0, column=0, sticky='w')
     label_value = tk.Label(master=button_subpane, text=f' 0.00€/km ')
     label_value.grid(row=0, column=1)
-    button_plus = tk.Button(master=button_subpane, text=' + ', command=float_increase, repeatdelay=250, repeatinterval=50)
+    button_plus = tk.Button(master=button_subpane, text=' + ', command=float_increase, repeatdelay=250, repeatinterval=25)
     button_plus.grid(row=0, column=2, sticky='e')
     button_subpane.grid(row=6, column=0, sticky='ns', padx=2, pady=5)
 
@@ -215,9 +223,9 @@ def gui():
     fleet_labels = []
     fleet_plus = []
     for id, num in enumerate(fleet_nums):
-        fleet_mins.append(tk.Button(master=button_subpane2, text=' - ', command=partial(int_decrease, id), repeatdelay=250, repeatinterval=50))
+        fleet_mins.append(tk.Button(master=button_subpane2, text=' - ', command=partial(int_decrease, id), repeatdelay=250, repeatinterval=100))
         fleet_labels.append(tk.Label(master=button_subpane2, text=f' {num} of each ' if id==0 else f'Type {id}: {num}'))
-        fleet_plus.append(tk.Button(master=button_subpane2, text=' + ', command=partial(int_increase, id), repeatdelay=250, repeatinterval=50))
+        fleet_plus.append(tk.Button(master=button_subpane2, text=' + ', command=partial(int_increase, id), repeatdelay=250, repeatinterval=100))
     button_subpane2.grid(row=12, column=0, sticky='ns', padx=2, pady=5)
 
 

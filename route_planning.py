@@ -8,7 +8,7 @@ import numpy as np
 import time as ti
 from utils import get_nodes, get_routes, get_distance_matrix_from_routes, get_time_matrix_from_routes, get_time_list_from_nodes, count_occurrences, int_to_time, get_fss, get_lss, check_infeasibility, write_to_csv
 
-# Global variables defaults - Values are adjusted from GUI through set_variables()
+# Global variable defaults - Values are adjusted from GUI through set_variables()
 vehicles = np.repeat(np.arange(1, 8), 20)
 num_vehicles = len(vehicles)
 city = 'Shanghai'
@@ -16,7 +16,7 @@ toll = 200
 timeout = 10800
 fss = routing_enums_pb2.FirstSolutionStrategy.AUTOMATIC
 fss_string = 'Automatic'
-lss = routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
+lss = routing_enums_pb2.LocalSearchMetaheuristic.AUTOMATIC
 lss_string = 'Automatic'
 city_int = 0 if city=='Paris' else 1 if city=='NewYork' else 2
 
@@ -26,7 +26,7 @@ carriers['ids'] = [1, 2, 3, 4, 5, 6, 7]
 carriers['payloads'] = [2800000, 883000, 670000, 2800000, 905000, 720000, 100000] # in g
 carriers['volumes'] = [34800, 5800, 3200, 21560, 7670, 4270, 200] # in liters
 carriers['ranges'] = [1028571, 875000, 847458, 79710, 205023, 118977, 100000] # in m
-carriers['cpkm_cities'] = [[2393, 2152, 2079, 2472, 2158, 2102, 3560], [3181, 3017, 2961, 3377, 3082, 3027, 3700], [1070, 892, 833, 1233, 944, 889, 1810]]
+carriers['cpkm_cities'] = [[2396, 2155, 2082, 2475, 2161, 2105, 3560], [3181, 3017, 2961, 3377, 3082, 3027, 3700], [1070, 892, 833, 1233, 944, 889, 1810]]
 carriers['cpkm_outside'] = carriers['cpkm_cities'][city_int]
 carriers['cpkm_inside'] = [c+toll if num<3 else c for num, c in enumerate(carriers['cpkm_outside'])]
 
