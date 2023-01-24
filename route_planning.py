@@ -260,9 +260,16 @@ if __name__ == '__main__':
         if csv_list:
             print(write_to_csv(csv_list, city, int(toll/10), timeout, routes))
     
-    manual_routing(np.repeat(np.arange(1, 8), 30), 'NewYork', 1000000, 'Automatic FSS', 'Guided Local Search', 1800)
     manual_routing(np.repeat(np.arange(1, 8), 20), 'Shanghai', 0, 'Automatic FSS', 'Guided Local Search', 1800)
     manual_routing(np.repeat(np.arange(1, 8), 20), 'Shanghai', 50, 'Automatic FSS', 'Guided Local Search', 1800)
     manual_routing(np.repeat(np.arange(1, 8), 20), 'Shanghai', 125, 'Automatic FSS', 'Guided Local Search', 1800)
     manual_routing(np.repeat(np.arange(1, 8), 20), 'Shanghai', 200, 'Automatic FSS', 'Guided Local Search', 1800)
     manual_routing(np.repeat(np.arange(1, 8), 20), 'Shanghai', 1000000, 'Automatic FSS', 'Guided Local Search', 1800)
+    manual_routing(np.repeat(np.arange(1, 8), 30), 'NewYork', 0, 'Automatic FSS', 'Guided Local Search', 1800)
+    manual_routing(np.repeat(np.arange(1, 8), 30), 'NewYork', 100, 'Automatic FSS', 'Guided Local Search', 1800)
+    manual_routing(np.repeat(np.arange(1, 8), 30), 'NewYork', 250, 'Automatic FSS', 'Guided Local Search', 1800)
+    manual_routing(np.repeat(np.arange(1, 8), 30), 'NewYork', 400, 'Automatic FSS', 'Guided Local Search', 1800)
+    manual_routing(np.repeat(np.arange(1, 8), 30), 'Paris', 0, 'Automatic FSS', 'Guided Local Search', 1800)
+    manual_routing(np.repeat(np.arange(1, 8), 30), 'Paris', 100, 'Automatic FSS', 'Guided Local Search', 1800)
+    manual_routing(np.repeat(np.arange(1, 8), 30), 'Paris', 250, 'Automatic FSS', 'Guided Local Search', 1800)
+    manual_routing(np.repeat(np.arange(1, 8), 30), 'Paris', 400, 'Automatic FSS', 'Guided Local Search', 1800)
