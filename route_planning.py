@@ -258,7 +258,7 @@ if __name__ == '__main__':
         set_variables(new_fleet, new_city, new_toll, new_fss, new_lss, new_timeout)
         routes, load, dist, time, cost, fleet, params, csv_list = main()
         if csv_list:
-            print(write_to_csv(csv_list, city, int(toll/10), timeout, routes))
+            print(write_to_csv(csv_list, city, int(toll/10), timeout, 1800, routes))
     
     manual_routing(np.repeat(np.arange(1, 8), 20), 'Shanghai', 0, 'Automatic FSS', 'Guided Local Search', 1800)
     manual_routing(np.repeat(np.arange(1, 8), 20), 'Shanghai', 50, 'Automatic FSS', 'Guided Local Search', 1800)
