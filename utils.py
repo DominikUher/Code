@@ -35,7 +35,7 @@ def count_occurrences(list):
 def generate_vehicles(list):
     out_list = []
     for id, num in enumerate(list):
-        for x in range(num*2): # Double the amount to allow for two routes per vehicle (morning+evening)
+        for x in range(num):
             out_list.append(id+1)
     return out_list
 

@@ -12,7 +12,7 @@ from utils import count_occurrences, generate_vehicles, write_to_csv
 from route_planning import set_variables, main
 
 # Global variables
-display = 'Welcome to ETS\'s new routing software!\n\nSelect the relevant city, toll, and fleet in the left sidebar.\nChoose your preferred first solution strategy (FSS), local search strategy (LSS), and time limit [sec] via the blue option menus.\nGenerate routes with the green button in the top left!\n\nAll vehicles are assumed to be available for routes twice per day, which is why the solution may use up to double the vehicles chosen.'
+display = 'Welcome to ETS\'s new routing software!\n\nSelect the relevant city, toll, and fleet in the left sidebar.\nChoose your preferred first solution strategy (FSS), local search strategy (LSS), and time limit [sec] via the blue option menus.\nGenerate routes with the green button in the top left!'
 texts = ['', '', '']
 new_vehicles = []
 new_city = 'Paris'
@@ -108,7 +108,7 @@ def gui():
         global busy
         global busy_end
         new_city = 'Paris' if radio.get() == 1 else 'NewYork' if radio.get() == 2 else 'Shanghai'
-        new_vehicles = generate_vehicles(existing_fleets[radio.get()-1]) if radio2.get() == 1 else np.repeat(np.arange(1, 8), fleet_nums[0]*2) if radio2.get() == 2 else generate_vehicles(fleet_nums[1:])
+        new_vehicles = generate_vehicles(existing_fleets[radio.get()-1]) if radio2.get() == 1 else np.repeat(np.arange(1, 8), fleet_nums[0]) if radio2.get() == 2 else generate_vehicles(fleet_nums[1:])
         new_toll_str = label_value['text']
         new_fss = fss_var.get()
         new_lss = lss_var.get()
