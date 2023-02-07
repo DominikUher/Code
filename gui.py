@@ -3,9 +3,8 @@
 """ https://zetcode.com/tkinter/ """
 """ https://www.geeksforgeeks.org/radiobutton-in-tkinter-python/ """
 import time as ti
-import numpy as np
+from numpy import repeat, arange
 import tkinter as tk
-from tkinter import ttk
 from tkinter import scrolledtext
 from functools import partial
 from utils import count_occurrences, generate_vehicles, write_to_csv, draw_routes
@@ -108,7 +107,7 @@ def gui():
         global busy
         global busy_end
         new_city = 'Paris' if radio.get() == 1 else 'NewYork' if radio.get() == 2 else 'Shanghai'
-        new_vehicles = generate_vehicles(existing_fleets[radio.get()-1]) if radio2.get() == 1 else np.repeat(np.arange(1, 8), fleet_nums[0]) if radio2.get() == 2 else generate_vehicles(fleet_nums[1:])
+        new_vehicles = generate_vehicles(existing_fleets[radio.get()-1]) if radio2.get() == 1 else repeat(arange(1, 8), fleet_nums[0]) if radio2.get() == 2 else generate_vehicles(fleet_nums[1:])
         new_toll_str = label_value['text']
         new_fss = fss_var.get()
         new_lss = lss_var.get()

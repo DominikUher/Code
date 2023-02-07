@@ -4,12 +4,12 @@
 from ortools.constraint_solver import routing_parameters_pb2
 from ortools.constraint_solver import routing_enums_pb2
 from ortools.constraint_solver import pywrapcp
-import numpy as np
-import time as ti
+from numpy import repeat, arange
+from time import strftime, localtime, time
 from utils import get_nodes, get_routes, get_distance_matrix_from_routes, get_time_matrix_from_routes, get_time_list_from_nodes, count_occurrences, int_to_time, get_fss, get_lss, check_infeasibility, write_to_csv
 
 # Global variable defaults - Values are adjusted from GUI through set_variables()
-vehicles = np.repeat(np.arange(1, 8), 20)
+vehicles = repeat(arange(1, 8), 20)
 num_vehicles = len(vehicles)
 city = 'Shanghai'
 toll = 200
@@ -249,7 +249,7 @@ def main():
 
     # Solve the problem
     try:
-        busy_end = ti.strftime('%X', ti.localtime(ti.time()+timeout))
+        busy_end = strftime('%X', localtime(time()+timeout))
         print(f'\nSearching {city} with fleet {count_occurrences(vehicles)}')
         print(f'ending by latest: {busy_end}')
         solution = routing.SolveWithParameters(search_parameters)

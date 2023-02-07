@@ -1,26 +1,10 @@
-import pandas as pd
-import numpy as np
-import math
+from pandas import read_csv, DataFrame
+from numpy import sum
+from math import floor
 from collections import defaultdict
 from ortools.constraint_solver import routing_enums_pb2
 import matplotlib.pyplot as plt
 from time import strftime, localtime
-
-
-# Function to compute a euclidean distrance matrix from lat/lon
-def compute_euclidean_distance_matrix(locations):
-    distances = {}
-    for from_counter, from_node in enumerate(locations):
-        distances[from_counter] = {}
-        for to_counter, to_node in enumerate(locations):
-            if from_counter == to_counter:
-                distances[from_counter][to_counter] = 0
-            else:
-                # Euclidean distance
-                distances[from_counter][to_counter] = (int(
-                    math.hypot((from_node[0] - to_node[0]),
-                               (from_node[1] - to_node[1]))))
-    return distances
 
 
 # Function to display a long list of vehicles in a short dict of types and occurence
@@ -52,10 +36,10 @@ def time_to_int(time):
 
 # Function to convert from integer seconds to time (XX:XX:XX)
 def int_to_time(seconds):
-    hours = math.floor(seconds/3600)
+    hours = floor(seconds/3600)
     hours_str = hours if hours>9 else f'0{hours}'
     seconds -= hours*3600
-    minutes = math.floor(seconds/60)
+    minutes = floor(seconds/60)
     minutes_str = minutes if minutes>9 else f'0{minutes}'
     seconds -= minutes*60
     seconds_str = seconds if seconds>9 else f'0{seconds}'
@@ -64,12 +48,12 @@ def int_to_time(seconds):
 
 # Function to read in node information regarding a city from /instances/ .nodes file
 def get_nodes(city):
-    return pd.read_csv(f'./instances/{city}.nodes', sep=' ')
+    return read_csv(f'./instances/{city}.nodes', sep=' ')
 
 
 # Function to read in route information reagrding a city from /instances/ .routes file
 def get_routes(city):
-    return pd.read_csv(f'./instances/{city}.routes', sep=' ')
+    return read_csv(f'./instances/{city}.routes', sep=' ')
 
 
 # Function to calculate a distance matrix from .routes format data
@@ -119,7 +103,7 @@ def write_to_csv(csv, city, toll, timeout, time, routes):
             'Routes': routes
         }
     try:
-        df = pd.DataFrame(data_out)
+        df = DataFrame(data_out)
         df.to_csv(f'output/{city}_{toll}_{timeout}_FSS{csv[5]}_LSS{csv[6]}.csv', index=False, sep=';')
     except Exception as e:
         return f'Error: {e}\n'
@@ -128,10 +112,10 @@ def write_to_csv(csv, city, toll, timeout, time, routes):
 
 # Function to perform sanity check on user-defined parameters to avoid running impossible searches
 def check_infeasibility(vehicle_weights, vehicle_volumes, demand_weights, demand_volumes):
-    available_weight = np.sum(vehicle_weights)
-    available_volume = np.sum(vehicle_volumes)
-    needed_weight = np.sum(demand_weights)
-    needed_volume = np.sum(demand_volumes)
+    available_weight = sum(vehicle_weights)
+    available_volume = sum(vehicle_volumes)
+    needed_weight = sum(demand_weights)
+    needed_volume = sum(demand_volumes)
     if available_weight < needed_weight:
         return True, ['No solution possible!', '', f'Demanded weight {needed_weight/1000}kg > Available capacity {available_weight/1000}kg', '', 'No solution possible!', '', 'No solution possible due to insufficient weight capacity', False]
     elif available_volume < needed_volume:
