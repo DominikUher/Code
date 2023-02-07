@@ -8,7 +8,7 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import scrolledtext
 from functools import partial
-from utils import count_occurrences, generate_vehicles, write_to_csv
+from utils import count_occurrences, generate_vehicles, write_to_csv, draw_routes
 from route_planning import set_variables, main
 
 # Global variables
@@ -134,6 +134,7 @@ def gui():
         update_display()
         if csv_list:
             texts[2] += write_to_csv(csv_list, new_city, int(new_toll*100), new_time, round(end_time-start_time, 3), routes)
+            draw_routes(csv_list[7], csv_list[8], csv_list[9], csv_list[10], new_city)
         texts[2] += '\n'
         busy = False
         update_display()

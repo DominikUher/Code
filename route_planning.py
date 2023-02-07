@@ -58,6 +58,7 @@ def create_data_model():
 
     data = {}
     data['city'] = city
+    data['nodes'] = nodes
     data['distance_total'] = get_distance_matrix_from_routes(routes, num_nodes, 'Total')
     data['distance_inside'] = get_distance_matrix_from_routes(routes, num_nodes, 'Inside')
     data['distance_outside'] = get_distance_matrix_from_routes(routes, num_nodes, 'Outside')
@@ -87,10 +88,14 @@ def print_solution(data, manager, routing, solution):
     total_payload = 0
     total_volume = 0
     chosen_fleet = []
+    routes = []
+    types_seq = []
+    types = [0, 0, 0, 0, 0, 0, 0]
 
     for vehicle_id in range(data['num_vehicles']): # For each vehicle
         index = routing.Start(vehicle_id)
-        route_string = f'Route for vehicle {len(chosen_fleet)+1} (Type {vehicles[vehicle_id]}):\n'
+        vtype = vehicles[vehicle_id]
+        route_string = f'Route for vehicle {len(chosen_fleet)+1} (Type {vtype}):\n'
         route_cost = 0
         route_distance = 0
         route_distance_inside = 0
@@ -98,12 +103,14 @@ def print_solution(data, manager, routing, solution):
         route_time = 0
         route_payload = 0
         route_volume = 0
+        subroute = []
 
         while not routing.IsEnd(index): # For each node in vehicle's route
             node_index = manager.IndexToNode(index)
             route_payload += data['demands_g'][node_index]
             route_volume += data['demands_liter'][node_index]
             route_string += f'[{node_index}] ({route_payload/1000}kg; {route_volume/1000}m3) -> '
+            subroute.append(node_index)
             previous_index = index
             index = solution.Value(routing.NextVar(index))
             route_cost += routing.GetArcCostForVehicle(previous_index, index, vehicle_id)
@@ -113,6 +120,7 @@ def print_solution(data, manager, routing, solution):
             route_time += data['time_routes'][node_index][manager.IndexToNode(index)] + data['time_nodes'][manager.IndexToNode(index)]
 
         route_string += f'[{manager.IndexToNode(index)}] ({route_payload/1000}kg; {route_volume/1000}m3)\n'
+        subroute.append(manager.IndexToNode(index))
         route_max_range = carriers['ranges'][vehicles[vehicle_id]-1]/1000
         route_string += f'Distance: {route_distance/1000}/{route_max_range}km ({route_distance_inside/1000}km inside; {route_distance_outside/1000}km outside)\n'
         route_cpkm_in = carriers['cpkm_inside'][vehicles[vehicle_id]-1]/1000
@@ -130,6 +138,9 @@ def print_solution(data, manager, routing, solution):
             total_payload += route_payload
             total_volume += route_volume
             chosen_fleet.append(vehicles[vehicle_id])
+            routes.append(subroute)
+            types[vtype-1] += 1
+            types_seq.append(vtype)
             all_routes_string += route_string+'\n'
 
     total_load_string = f'Total load of all routes: {total_payload/1000}kg and {total_volume/1000}m3'
@@ -139,8 +150,10 @@ def print_solution(data, manager, routing, solution):
     chosen_fleet_string = f'Chosen fleet: {count_occurrences(chosen_fleet)} ({len(chosen_fleet)} vehicles)'
     chosen_parameter_string = f'Solution for {city} with {toll_str}€/km tolls and fleet {count_occurrences(vehicles)}\nSearch parameters: FSS={fss_string}, LSS={lss_string}, t={timeout}s'
     print(f'{all_routes_string}\n{total_dist_string}\n{total_cost_string}\n{total_load_string}\n{chosen_fleet_string}')
-
-    return all_routes_string, total_load_string, total_dist_string, total_time_string, total_cost_string, chosen_fleet_string, chosen_parameter_string, [total_cost/1000, f'{count_occurrences(chosen_fleet)}', total_payload/1000, total_volume/1000, total_distance/1000]
+    print(f'Types: {types}')
+    print(f'Types_seq: {types_seq}')
+    print(f'Routes: {routes}')
+    return all_routes_string, total_load_string, total_dist_string, total_time_string, total_cost_string, chosen_fleet_string, chosen_parameter_string, [total_cost/1000, f'{count_occurrences(chosen_fleet)}', total_payload/1000, total_volume/1000, total_distance/1000, fss, lss, types, types_seq, routes, data['nodes']]
 
 
 
@@ -260,16 +273,95 @@ if __name__ == '__main__':
         if csv_list:
             print(write_to_csv(csv_list, city, int(toll/10), timeout, 1800, routes))
     
-    manual_routing(np.repeat(np.arange(1, 8), 20), 'Shanghai', 0, 'Automatic FSS', 'Guided Local Search', 1800)
-    manual_routing(np.repeat(np.arange(1, 8), 20), 'Shanghai', 50, 'Automatic FSS', 'Guided Local Search', 1800)
-    manual_routing(np.repeat(np.arange(1, 8), 20), 'Shanghai', 125, 'Automatic FSS', 'Guided Local Search', 1800)
-    manual_routing(np.repeat(np.arange(1, 8), 20), 'Shanghai', 200, 'Automatic FSS', 'Guided Local Search', 1800)
-    manual_routing(np.repeat(np.arange(1, 8), 20), 'Shanghai', 1000000, 'Automatic FSS', 'Guided Local Search', 1800)
-    manual_routing(np.repeat(np.arange(1, 8), 30), 'NewYork', 0, 'Automatic FSS', 'Guided Local Search', 1800)
-    manual_routing(np.repeat(np.arange(1, 8), 30), 'NewYork', 100, 'Automatic FSS', 'Guided Local Search', 1800)
-    manual_routing(np.repeat(np.arange(1, 8), 30), 'NewYork', 250, 'Automatic FSS', 'Guided Local Search', 1800)
-    manual_routing(np.repeat(np.arange(1, 8), 30), 'NewYork', 400, 'Automatic FSS', 'Guided Local Search', 1800)
-    manual_routing(np.repeat(np.arange(1, 8), 30), 'Paris', 0, 'Automatic FSS', 'Guided Local Search', 1800)
-    manual_routing(np.repeat(np.arange(1, 8), 30), 'Paris', 100, 'Automatic FSS', 'Guided Local Search', 1800)
-    manual_routing(np.repeat(np.arange(1, 8), 30), 'Paris', 250, 'Automatic FSS', 'Guided Local Search', 1800)
-    manual_routing(np.repeat(np.arange(1, 8), 30), 'Paris', 400, 'Automatic FSS', 'Guided Local Search', 1800)
+    markus0 = [1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+    markus1 = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 4]
+    markus2 = [1, 1, 1, 1, 1, 1, 1, 1, 1, 4]
+    markusNewYork = [markus0, markus1, markus2]
+
+    markusParis = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+
+    niklas = [1, 3, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
+    """
+    manual_routing(markusParis, 'Paris', 0, 'Savings', 'Guided Local Search', 600)
+    manual_routing(markusParis, 'Paris', 100, 'Savings', 'Guided Local Search', 601)
+    manual_routing(markusParis, 'Paris', 250, 'Savings', 'Guided Local Search', 602)
+    manual_routing(markusParis, 'Paris', 400, 'Savings', 'Guided Local Search', 603)
+
+    manual_routing(markus1, 'NewYork', 0, 'Savings', 'Guided Local Search', 600)
+    manual_routing(markus1, 'NewYork', 100, 'Savings', 'Guided Local Search', 601)
+    manual_routing(markus1, 'NewYork', 250, 'Savings', 'Guided Local Search', 602)
+    manual_routing(markus1, 'NewYork', 400, 'Savings', 'Guided Local Search', 603)
+
+
+    
+    manual_routing(markusNewYork[1], 'NewYork', 0, 'Savings', 'Guided Local Search', 601)
+    manual_routing(markusNewYork[2], 'NewYork', 0, 'Savings', 'Guided Local Search', 602)
+    
+    manual_routing(markusNewYork[0], 'NewYork', 100, 'Savings', 'Guided Local Search', 600)
+    manual_routing(markusNewYork[1], 'NewYork', 100, 'Savings', 'Guided Local Search', 601)
+    manual_routing(markusNewYork[2], 'NewYork', 100, 'Savings', 'Guided Local Search', 602)
+
+    manual_routing(markusNewYork[0], 'NewYork', 250, 'Savings', 'Guided Local Search', 600)
+    manual_routing(markusNewYork[1], 'NewYork', 250, 'Savings', 'Guided Local Search', 601)
+    manual_routing(markusNewYork[2], 'NewYork', 250, 'Savings', 'Guided Local Search', 602)
+    
+    manual_routing(markusNewYork[0], 'NewYork', 400, 'Savings', 'Guided Local Search', 600)
+    manual_routing(markusNewYork[1], 'NewYork', 400, 'Savings', 'Guided Local Search', 601)
+    manual_routing(markusNewYork[2], 'NewYork', 400, 'Savings', 'Guided Local Search', 602)
+
+    """
+    manual_routing(niklas, 'Shanghai', 0, 'Automatic FSS', 'Guided Local Search', 60)
+    """
+    manual_routing(niklas, 'Shanghai', 0, 'Automatic FSS', 'Guided Local Search', 300)
+    manual_routing(niklas, 'Shanghai', 0, 'Automatic FSS', 'Guided Local Search', 600)
+    manual_routing(niklas, 'Shanghai', 0, 'Automatic FSS', 'Guided Local Search', 900)
+    manual_routing(niklas, 'Shanghai', 0, 'Automatic FSS', 'Guided Local Search', 1200)
+
+    manual_routing(niklas, 'Shanghai', 0, 'Savings', 'Guided Local Search', 60)
+    manual_routing(niklas, 'Shanghai', 0, 'Savings', 'Guided Local Search', 300)
+    manual_routing(niklas, 'Shanghai', 0, 'Savings', 'Guided Local Search', 600)
+    manual_routing(niklas, 'Shanghai', 0, 'Savings', 'Guided Local Search', 900)
+    manual_routing(niklas, 'Shanghai', 0, 'Savings', 'Guided Local Search', 1200)
+
+    manual_routing(niklas, 'Shanghai', 0, 'Parallel Cheapest Insertion', 'Guided Local Search', 60)
+    manual_routing(niklas, 'Shanghai', 0, 'Parallel Cheapest Insertion', 'Guided Local Search', 300)
+    manual_routing(niklas, 'Shanghai', 0, 'Parallel Cheapest Insertion', 'Guided Local Search', 600)
+    manual_routing(niklas, 'Shanghai', 0, 'Parallel Cheapest Insertion', 'Guided Local Search', 900)
+    manual_routing(niklas, 'Shanghai', 0, 'Parallel Cheapest Insertion', 'Guided Local Search', 1200)
+
+    manual_routing(niklas, 'Shanghai', 0, 'Automatic FSS', 'Greedy Descent', 60)
+    manual_routing(niklas, 'Shanghai', 0, 'Automatic FSS', 'Greedy Descent', 300)
+    manual_routing(niklas, 'Shanghai', 0, 'Automatic FSS', 'Greedy Descent', 600)
+    manual_routing(niklas, 'Shanghai', 0, 'Automatic FSS', 'Greedy Descent', 900)
+    manual_routing(niklas, 'Shanghai', 0, 'Automatic FSS', 'Greedy Descent', 1200)
+
+    manual_routing(niklas, 'Shanghai', 0, 'Savings', 'Greedy Descent', 60)
+    manual_routing(niklas, 'Shanghai', 0, 'Savings', 'Greedy Descent', 300)
+    manual_routing(niklas, 'Shanghai', 0, 'Savings', 'Greedy Descent', 600)
+    manual_routing(niklas, 'Shanghai', 0, 'Savings', 'Greedy Descent', 900)
+    manual_routing(niklas, 'Shanghai', 0, 'Savings', 'Greedy Descent', 1200)
+
+    manual_routing(niklas, 'Shanghai', 0, 'Parallel Cheapest Insertion', 'Greedy Descent', 60)
+    manual_routing(niklas, 'Shanghai', 0, 'Parallel Cheapest Insertion', 'Greedy Descent', 300)
+    manual_routing(niklas, 'Shanghai', 0, 'Parallel Cheapest Insertion', 'Greedy Descent', 600)
+    manual_routing(niklas, 'Shanghai', 0, 'Parallel Cheapest Insertion', 'Greedy Descent', 900)
+    manual_routing(niklas, 'Shanghai', 0, 'Parallel Cheapest Insertion', 'Greedy Descent', 1200)
+
+    manual_routing(niklas, 'Shanghai', 0, 'Automatic FSS', 'Tabu Search', 60)
+    manual_routing(niklas, 'Shanghai', 0, 'Automatic FSS', 'Tabu Search', 300)
+    manual_routing(niklas, 'Shanghai', 0, 'Automatic FSS', 'Tabu Search', 600)
+    manual_routing(niklas, 'Shanghai', 0, 'Automatic FSS', 'Tabu Search', 900)
+    manual_routing(niklas, 'Shanghai', 0, 'Automatic FSS', 'Tabu Search', 1200)
+
+    manual_routing(niklas, 'Shanghai', 0, 'Savings', 'Tabu Search', 60)
+    manual_routing(niklas, 'Shanghai', 0, 'Savings', 'Tabu Search', 300)
+    manual_routing(niklas, 'Shanghai', 0, 'Savings', 'Tabu Search', 600)
+    manual_routing(niklas, 'Shanghai', 0, 'Savings', 'Tabu Search', 900)
+    manual_routing(niklas, 'Shanghai', 0, 'Savings', 'Tabu Search', 1200)
+
+    manual_routing(niklas, 'Shanghai', 0, 'Parallel Cheapest Insertion', 'Tabu Search', 60)
+    manual_routing(niklas, 'Shanghai', 0, 'Parallel Cheapest Insertion', 'Tabu Search', 300)
+    manual_routing(niklas, 'Shanghai', 0, 'Parallel Cheapest Insertion', 'Tabu Search', 600)
+    manual_routing(niklas, 'Shanghai', 0, 'Parallel Cheapest Insertion', 'Tabu Search', 900)
+    manual_routing(niklas, 'Shanghai', 0, 'Parallel Cheapest Insertion', 'Tabu Search', 1200)
+    """

@@ -3,6 +3,8 @@ import numpy as np
 import math
 from collections import defaultdict
 from ortools.constraint_solver import routing_enums_pb2
+import matplotlib.pyplot as plt
+from time import strftime, localtime
 
 
 # Function to compute a euclidean distrance matrix from lat/lon
@@ -105,6 +107,8 @@ def write_to_csv(csv, city, toll, timeout, time, routes):
     data_out = {
             'City': [city],
             'Toll [ct]': [toll],
+            'Construction heuristic': [csv[5]],
+            'Metaheuristic': [csv[6]],
             'Max_Time [s]': [timeout],
             'Actual_Time [s]': [time],
             'Total_Cost [€]': [csv[0]],
@@ -116,7 +120,7 @@ def write_to_csv(csv, city, toll, timeout, time, routes):
         }
     try:
         df = pd.DataFrame(data_out)
-        df.to_csv(f'output/{city}_{toll}_{timeout}.csv', index=False, sep=';')
+        df.to_csv(f'output/{city}_{toll}_{timeout}_FSS{csv[5]}_LSS{csv[6]}.csv', index=False, sep=';')
     except Exception as e:
         return f'Error: {e}\n'
     return 'Output written to CSV file\n'
@@ -186,3 +190,41 @@ def get_lss(new_lss):
         case 'Generic Tabu Search':
             lss = routing_enums_pb2.LocalSearchMetaheuristic.GENERIC_TABU_SEARCH
     return lss
+
+# Function to visualise routes taken and adapted from LiveCoding code by Gerhard Hiemann
+# Each vehicle type should be plotted in a different base colour with variations between vehicles 
+def draw_routes(types: list[int], types_seq: list[int], routes: list[list[int]], nodes: dict, city: str):
+    # Keep track of how many types have been seen already / where in the color scheme we are
+    # Start all at 3, to avoid getting very light line colours on white background
+    types_seen = [3, 3, 3, 3, 3, 3, 3]
+
+    # Define colour schemes for vehicles (plus 6 to skip first and last three entries as they are too light/dark to distinguish)
+    colors = [plt.cm.get_cmap('Greys', types[0]+6),
+        plt.cm.get_cmap('Reds', types[1]+6),
+        plt.cm.get_cmap('RdPu', types[2]+6),
+        plt.cm.get_cmap('Greens', types[3]+6),
+        plt.cm.get_cmap('Blues', types[4]+6),
+        plt.cm.get_cmap('Purples', types[5]+6),
+        plt.cm.get_cmap('cool', types[6]+6)]
+
+    time = strftime('%H:%M:%S', localtime())
+    fig, ax = plt.subplots(num=f'Routes calculated for {city} at {time}')
+    fig.tight_layout()
+    ax.axis('equal')
+    plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
+    plt.tick_params(axis='y', which='both', right=False, left=False, labelleft=False)
+
+    for id, route in enumerate(routes):
+        path = list()
+        for node in range(len(route)):
+            path.append((nodes.Lon.iat[route[node]], nodes.Lat.iat[route[node]]))
+        # plot control points and connecting lines
+        x, y = zip(*path)
+        vtype = types_seq[id]
+        line, = ax.plot(x, y, 'o-', color=colors[vtype-1](types_seen[vtype-1]), label=f'{id+1}: {vtype}')
+        types_seen[vtype-1] += 1
+    plt.legend(loc='center right', bbox_to_anchor=(0.15, 0.5), bbox_transform=fig.transFigure)
+    for pos in ['right', 'top', 'bottom', 'left']:
+        plt.gca().spines[pos].set_visible(False)
+        
+    plt.show(block=False)
