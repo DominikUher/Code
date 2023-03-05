@@ -288,11 +288,11 @@ if __name__ == '__main__':
     lss = ['Guided Local Search']
     timeout = [1800]
 
-    fleets = repeat([fleet], (len(fss)*len(lss)*len(timeout)*len(city)), axis=0)
-    cities = repeat([city], (len(fss)*len(lss)*len(timeout)))
+    fleets = repeat([fleet], (len(fss)*len(lss)*len(timeout)*len(city)*len(toll)), axis=0)
+    cities = repeat([city], (len(fss)*len(lss)*len(timeout)*len(toll)))
     tolls = repeat(toll, (len(fss)*len(lss)*len(timeout)*len(city)))
-    fsss = repeat(fss, (len(lss)*len(timeout)*len(city)))
-    lsss = list(repeat(lss, (len(fss)*len(timeout)*len(city))))
-    timeouts = (len(fss)*len(lss)*len(city)) * timeout
+    fsss = repeat(fss, (len(lss)*len(timeout)*len(city)*len(toll)))
+    lsss = list(repeat(lss, (len(fss)*len(timeout)*len(city)*len(toll))))
+    timeouts = (len(fss)*len(lss)*len(city)*len(toll)) * timeout
     
     manual_routing(fleets, cities, tolls, fsss, lsss, timeouts)
