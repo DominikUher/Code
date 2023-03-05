@@ -5,7 +5,7 @@ from ortools.constraint_solver import routing_parameters_pb2
 from ortools.constraint_solver import routing_enums_pb2
 from ortools.constraint_solver import pywrapcp
 from numpy import repeat, arange
-from time import strftime, localtime, time
+import time as ti
 from utils import get_nodes, get_routes, get_distance_matrix_from_routes, get_time_matrix_from_routes, get_time_list_from_nodes, count_occurrences, int_to_time, get_fss, get_lss, check_infeasibility, write_to_csv
 
 # Global variable defaults - Values are adjusted from GUI through set_variables()
@@ -249,9 +249,10 @@ def main():
 
     # Solve the problem
     try:
-        busy_end = strftime('%X', localtime(time()+timeout))
+        busy_end = ti.strftime('%X', ti.localtime(ti.time()+timeout))
         print(f'\nSearching {city} with fleet {count_occurrences(vehicles)}')
         print(f'ending by latest: {busy_end}')
+        print(search_parameters)
         solution = routing.SolveWithParameters(search_parameters)
     except Exception as e:
         return '', '', '', '', f'Error occurred while solving: {e}', '', f'{e}', False
@@ -267,101 +268,31 @@ def main():
 
 if __name__ == '__main__':
     # Only relevant if route_planning.py is executed as the main program, i.e. in testing (never from GUI)
-    def manual_routing(new_fleet, new_city, new_toll, new_fss, new_lss, new_timeout):
-        set_variables(new_fleet, new_city, new_toll, new_fss, new_lss, new_timeout)
-        routes, load, dist, time, cost, fleet, params, csv_list = main()
-        if csv_list:
-            print(write_to_csv(csv_list, city, int(toll/10), timeout, 1800, routes))
+    def manual_routing(new_fleets, new_cities, new_tolls, new_fsss, new_lsss, new_timeouts):
+        for id, _ in enumerate(new_fleets):
+            if {len(new_fleets), len(new_cities), len(new_tolls), len(new_fsss), len(new_lsss), len(new_timeouts)} == {len(new_fleets)}:
+                set_variables(new_fleets[id], new_cities[id], new_tolls[id], new_fsss[id], new_lsss[id], new_timeouts[id])
+                start_time = ti.time()
+                routes, load, dist, time, cost, fleet, params, csv_list = main()
+                end_time = ti.time()
+                run_time = round(end_time-start_time, 3)
+                if csv_list:
+                    print(write_to_csv(csv_list, city, int(toll/10), timeout, run_time, routes))
+            else:
+                print(f'Illegal array length: {len(new_fleets)} {len(new_cities)} {len(new_tolls)} {len(new_fsss)} {len(new_lsss)} {len(new_timeouts)}')
+
+    fleet = repeat(arange(1, 8), 20)
+    city = ['NewYork1', 'NewYork2']
+    toll = [0, 100, 250, 400]
+    fss = ['Automatic FSS']
+    lss = ['Guided Local Search']
+    timeout = [1800]
+
+    fleets = repeat([fleet], (len(fss)*len(lss)*len(timeout)*len(city)), axis=0)
+    cities = repeat([city], (len(fss)*len(lss)*len(timeout)))
+    tolls = repeat(toll, (len(fss)*len(lss)*len(timeout)*len(city)))
+    fsss = repeat(fss, (len(lss)*len(timeout)*len(city)))
+    lsss = list(repeat(lss, (len(fss)*len(timeout)*len(city))))
+    timeouts = (len(fss)*len(lss)*len(city)) * timeout
     
-    markus0 = [1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
-    markus1 = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 4]
-    markus2 = [1, 1, 1, 1, 1, 1, 1, 1, 1, 4]
-    markusNewYork = [markus0, markus1, markus2]
-
-    markusParis = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-
-    niklas = [1, 3, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
-    """
-    manual_routing(markusParis, 'Paris', 0, 'Savings', 'Guided Local Search', 600)
-    manual_routing(markusParis, 'Paris', 100, 'Savings', 'Guided Local Search', 601)
-    manual_routing(markusParis, 'Paris', 250, 'Savings', 'Guided Local Search', 602)
-    manual_routing(markusParis, 'Paris', 400, 'Savings', 'Guided Local Search', 603)
-
-    manual_routing(markus1, 'NewYork', 0, 'Savings', 'Guided Local Search', 600)
-    manual_routing(markus1, 'NewYork', 100, 'Savings', 'Guided Local Search', 601)
-    manual_routing(markus1, 'NewYork', 250, 'Savings', 'Guided Local Search', 602)
-    manual_routing(markus1, 'NewYork', 400, 'Savings', 'Guided Local Search', 603)
-
-
-    
-    manual_routing(markusNewYork[1], 'NewYork', 0, 'Savings', 'Guided Local Search', 601)
-    manual_routing(markusNewYork[2], 'NewYork', 0, 'Savings', 'Guided Local Search', 602)
-    
-    manual_routing(markusNewYork[0], 'NewYork', 100, 'Savings', 'Guided Local Search', 600)
-    manual_routing(markusNewYork[1], 'NewYork', 100, 'Savings', 'Guided Local Search', 601)
-    manual_routing(markusNewYork[2], 'NewYork', 100, 'Savings', 'Guided Local Search', 602)
-
-    manual_routing(markusNewYork[0], 'NewYork', 250, 'Savings', 'Guided Local Search', 600)
-    manual_routing(markusNewYork[1], 'NewYork', 250, 'Savings', 'Guided Local Search', 601)
-    manual_routing(markusNewYork[2], 'NewYork', 250, 'Savings', 'Guided Local Search', 602)
-    
-    manual_routing(markusNewYork[0], 'NewYork', 400, 'Savings', 'Guided Local Search', 600)
-    manual_routing(markusNewYork[1], 'NewYork', 400, 'Savings', 'Guided Local Search', 601)
-    manual_routing(markusNewYork[2], 'NewYork', 400, 'Savings', 'Guided Local Search', 602)
-
-    """
-    manual_routing(niklas, 'Shanghai', 0, 'Automatic FSS', 'Guided Local Search', 60)
-    """
-    manual_routing(niklas, 'Shanghai', 0, 'Automatic FSS', 'Guided Local Search', 300)
-    manual_routing(niklas, 'Shanghai', 0, 'Automatic FSS', 'Guided Local Search', 600)
-    manual_routing(niklas, 'Shanghai', 0, 'Automatic FSS', 'Guided Local Search', 900)
-    manual_routing(niklas, 'Shanghai', 0, 'Automatic FSS', 'Guided Local Search', 1200)
-
-    manual_routing(niklas, 'Shanghai', 0, 'Savings', 'Guided Local Search', 60)
-    manual_routing(niklas, 'Shanghai', 0, 'Savings', 'Guided Local Search', 300)
-    manual_routing(niklas, 'Shanghai', 0, 'Savings', 'Guided Local Search', 600)
-    manual_routing(niklas, 'Shanghai', 0, 'Savings', 'Guided Local Search', 900)
-    manual_routing(niklas, 'Shanghai', 0, 'Savings', 'Guided Local Search', 1200)
-
-    manual_routing(niklas, 'Shanghai', 0, 'Parallel Cheapest Insertion', 'Guided Local Search', 60)
-    manual_routing(niklas, 'Shanghai', 0, 'Parallel Cheapest Insertion', 'Guided Local Search', 300)
-    manual_routing(niklas, 'Shanghai', 0, 'Parallel Cheapest Insertion', 'Guided Local Search', 600)
-    manual_routing(niklas, 'Shanghai', 0, 'Parallel Cheapest Insertion', 'Guided Local Search', 900)
-    manual_routing(niklas, 'Shanghai', 0, 'Parallel Cheapest Insertion', 'Guided Local Search', 1200)
-
-    manual_routing(niklas, 'Shanghai', 0, 'Automatic FSS', 'Greedy Descent', 60)
-    manual_routing(niklas, 'Shanghai', 0, 'Automatic FSS', 'Greedy Descent', 300)
-    manual_routing(niklas, 'Shanghai', 0, 'Automatic FSS', 'Greedy Descent', 600)
-    manual_routing(niklas, 'Shanghai', 0, 'Automatic FSS', 'Greedy Descent', 900)
-    manual_routing(niklas, 'Shanghai', 0, 'Automatic FSS', 'Greedy Descent', 1200)
-
-    manual_routing(niklas, 'Shanghai', 0, 'Savings', 'Greedy Descent', 60)
-    manual_routing(niklas, 'Shanghai', 0, 'Savings', 'Greedy Descent', 300)
-    manual_routing(niklas, 'Shanghai', 0, 'Savings', 'Greedy Descent', 600)
-    manual_routing(niklas, 'Shanghai', 0, 'Savings', 'Greedy Descent', 900)
-    manual_routing(niklas, 'Shanghai', 0, 'Savings', 'Greedy Descent', 1200)
-
-    manual_routing(niklas, 'Shanghai', 0, 'Parallel Cheapest Insertion', 'Greedy Descent', 60)
-    manual_routing(niklas, 'Shanghai', 0, 'Parallel Cheapest Insertion', 'Greedy Descent', 300)
-    manual_routing(niklas, 'Shanghai', 0, 'Parallel Cheapest Insertion', 'Greedy Descent', 600)
-    manual_routing(niklas, 'Shanghai', 0, 'Parallel Cheapest Insertion', 'Greedy Descent', 900)
-    manual_routing(niklas, 'Shanghai', 0, 'Parallel Cheapest Insertion', 'Greedy Descent', 1200)
-
-    manual_routing(niklas, 'Shanghai', 0, 'Automatic FSS', 'Tabu Search', 60)
-    manual_routing(niklas, 'Shanghai', 0, 'Automatic FSS', 'Tabu Search', 300)
-    manual_routing(niklas, 'Shanghai', 0, 'Automatic FSS', 'Tabu Search', 600)
-    manual_routing(niklas, 'Shanghai', 0, 'Automatic FSS', 'Tabu Search', 900)
-    manual_routing(niklas, 'Shanghai', 0, 'Automatic FSS', 'Tabu Search', 1200)
-
-    manual_routing(niklas, 'Shanghai', 0, 'Savings', 'Tabu Search', 60)
-    manual_routing(niklas, 'Shanghai', 0, 'Savings', 'Tabu Search', 300)
-    manual_routing(niklas, 'Shanghai', 0, 'Savings', 'Tabu Search', 600)
-    manual_routing(niklas, 'Shanghai', 0, 'Savings', 'Tabu Search', 900)
-    manual_routing(niklas, 'Shanghai', 0, 'Savings', 'Tabu Search', 1200)
-
-    manual_routing(niklas, 'Shanghai', 0, 'Parallel Cheapest Insertion', 'Tabu Search', 60)
-    manual_routing(niklas, 'Shanghai', 0, 'Parallel Cheapest Insertion', 'Tabu Search', 300)
-    manual_routing(niklas, 'Shanghai', 0, 'Parallel Cheapest Insertion', 'Tabu Search', 600)
-    manual_routing(niklas, 'Shanghai', 0, 'Parallel Cheapest Insertion', 'Tabu Search', 900)
-    manual_routing(niklas, 'Shanghai', 0, 'Parallel Cheapest Insertion', 'Tabu Search', 1200)
-    """
+    manual_routing(fleets, cities, tolls, fsss, lsss, timeouts)
