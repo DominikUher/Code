@@ -252,7 +252,7 @@ def main():
         busy_end = ti.strftime('%X', ti.localtime(ti.time()+timeout))
         print(f'\nSearching {city} with fleet {count_occurrences(vehicles)}')
         print(f'ending by latest: {busy_end}')
-        print(search_parameters)
+        # print(search_parameters)
         solution = routing.SolveWithParameters(search_parameters)
     except Exception as e:
         return '', '', '', '', f'Error occurred while solving: {e}', '', f'{e}', False
